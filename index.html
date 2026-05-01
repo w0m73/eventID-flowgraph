@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Windows Event IDs – Grafo de Fluxo</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#ffffff;--bg2:#f5f5f3;--bg3:#eeede9;
+  --text:#1a1a18;--text2:#5f5e5a;--text3:#888780;
+  --border:rgba(0,0,0,0.12);--border2:rgba(0,0,0,0.22);
+  --blue:#185FA5;--blue-bg:#E6F1FB;
+  --radius:8px;--radius-lg:12px;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#1e1e1c;--bg2:#282826;--bg3:#323230;
+    --text:#f0efeb;--text2:#b4b2a9;--text3:#888780;
+    --border:rgba(255,255,255,0.1);--border2:rgba(255,255,255,0.18);
+    --blue:#85B7EB;--blue-bg:#042C53;
+  }
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg3);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+
+/* HEADER */
+.header{background:var(--bg);border-bottom:0.5px solid var(--border2);padding:0.6rem 1rem;display:flex;align-items:center;gap:1rem;flex-shrink:0;flex-wrap:wrap;}
+.header h1{font-size:14px;font-weight:500;color:var(--text);white-space:nowrap;}
+.header-controls{display:flex;gap:8px;align-items:center;flex:1;flex-wrap:wrap;}
+.header input{padding:6px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);font-size:12px;background:var(--bg2);color:var(--text);outline:none;width:200px;}
+.header input:focus{border-color:var(--blue);}
+.btn{font-size:11px;padding:6px 11px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg2);color:var(--text2);cursor:pointer;white-space:nowrap;}
+.btn:hover{background:var(--bg3);}
+.btn.active{background:var(--blue-bg);color:var(--blue);border-color:var(--blue);}
+.legend{display:flex;gap:10px;align-items:center;margin-left:auto;}
+.leg-item{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);}
+.leg-dot{width:10px;height:10px;border-radius:50%;}
+
+/* LAYOUT */
+.workspace{display:flex;flex:1;min-height:0;}
+
+/* LAYER SIDEBAR */
+.layer-sidebar{width:160px;background:var(--bg);border-right:0.5px solid var(--border);overflow-y:auto;flex-shrink:0;padding:0.75rem 0;}
+.layer-sidebar h3{font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;padding:0 0.75rem 0.5rem;}
+.layer-btn{display:flex;align-items:center;gap:7px;padding:7px 0.75rem;cursor:pointer;font-size:12px;color:var(--text2);border-left:2px solid transparent;transition:all 0.12s;width:100%;background:none;border-top:none;border-right:none;border-bottom:none;text-align:left;}
+.layer-btn:hover{background:var(--bg2);color:var(--text);}
+.layer-btn.active{background:var(--blue-bg);color:var(--blue);border-left-color:var(--blue);}
+.layer-bar{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+
+/* CANVAS AREA */
+.canvas-wrap{flex:1;overflow:scroll;position:relative;background:var(--bg3);min-width:0;}
+.canvas-wrap::-webkit-scrollbar{height:8px;width:8px;}
+.canvas-wrap::-webkit-scrollbar-track{background:var(--bg2);}
+.canvas-wrap::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px;}
+.canvas-wrap::-webkit-scrollbar-thumb:hover{background:var(--text3);}
+#canvas{position:relative;padding:1.5rem;width:max-content;min-width:100%;}
+
+/* LAYER SECTION */
+.layer-section{margin-bottom:1.5rem;}
+.layer-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:0.5rem;display:flex;align-items:center;gap:8px;}
+.layer-label-bar{height:2px;border-radius:2px;flex:1;opacity:0.35;}
+.layer-row{display:flex;align-items:flex-start;gap:0;flex-wrap:nowrap;overflow-x:visible;}
+
+/* EVENT NODE */
+.node-wrap{display:flex;align-items:flex-start;flex-shrink:0;}
+.node{display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;}
+.node-box{
+  width:76px;font-size:11px;font-weight:500;
+  padding:6px 4px 5px;border-radius:var(--radius);
+  text-align:center;cursor:pointer;
+  border:1.5px solid transparent;
+  transition:transform 0.12s,box-shadow 0.12s,border-color 0.12s;
+  line-height:1.2;
+  position:relative;
+}
+.node-box:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.15);}
+.node-box.highlighted{border-color:#fff !important;box-shadow:0 0 0 3px rgba(24,95,165,0.4);}
+.node-box.dimmed{opacity:0.25;}
+.node-box.selected{border-color:#fff !important;box-shadow:0 0 0 4px rgba(24,95,165,0.6);transform:translateY(-2px);}
+.node-eid{font-size:10px;font-weight:700;opacity:0.9;display:block;}
+.node-short{font-size:9px;opacity:0.75;display:block;margin-top:1px;line-height:1.2;}
+.node-label{font-size:9px;color:var(--text3);max-width:76px;text-align:center;line-height:1.2;}
+
+/* ARROWS */
+.arrow-h{display:flex;align-items:center;padding:0 2px;margin-top:14px;color:var(--text3);font-size:14px;flex-shrink:0;}
+.arrow-v-wrap{display:flex;justify-content:center;width:76px;margin:2px 0;}
+.arrow-v{font-size:11px;color:var(--text3);}
+
+/* CROSS ARROWS (vertical between layers) */
+.cross-row{display:flex;gap:0;margin-bottom:4px;}
+.cross-cell{width:76px;display:flex;justify-content:center;flex-shrink:0;}
+.cross-spacer{width:24px;flex-shrink:0;}/* matches arrow-h width */
+
+/* DETAIL PANEL */
+.detail-panel{
+  width:280px;background:var(--bg);border-left:0.5px solid var(--border2);
+  flex-shrink:0;overflow-y:auto;padding:1rem;
+  display:flex;flex-direction:column;gap:0.75rem;
+  transition:width 0.2s;
+}
+.detail-panel.hidden{width:0;padding:0;overflow:hidden;}
+.detail-close{display:flex;justify-content:flex-end;}
+.detail-close button{font-size:11px;padding:3px 8px;}
+.detail-eid{font-size:22px;font-weight:500;font-family:'Courier New',monospace;}
+.detail-desc{font-size:13px;color:var(--text);line-height:1.5;}
+.detail-section{font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-top:4px;}
+.detail-val{font-size:12px;color:var(--text);margin-top:2px;}
+.badge{font-size:10px;padding:2px 8px;border-radius:20px;display:inline-block;margin-top:4px;}
+.badge-high{background:#FCEBEB;color:#A32D2D;}
+.badge-medium{background:#FAEEDA;color:#854F0B;}
+.badge-low{background:#EAF3DE;color:#3B6D11;}
+.badge-info{background:var(--blue-bg);color:var(--blue);}
+@media(prefers-color-scheme:dark){
+  .badge-high{background:#501313;color:#F09595;}
+  .badge-medium{background:#412402;color:#FAC775;}
+  .badge-low{background:#173404;color:#C0DD97;}
+}
+.related-list{display:flex;flex-direction:column;gap:4px;}
+.related-item{font-size:11px;padding:4px 8px;background:var(--bg2);border-radius:var(--radius);cursor:pointer;border:0.5px solid var(--border);}
+.related-item:hover{background:var(--bg3);}
+.related-eid{font-weight:500;color:var(--blue);font-family:'Courier New',monospace;}
+
+/* ZOOM */
+#canvas-inner{transform-origin:top left;transition:transform 0.15s;}
+
+/* SVG OVERLAY */
+#svg-overlay{position:absolute;top:0;left:0;pointer-events:none;z-index:10;}
+#svg-overlay path{fill:none;stroke-width:2;opacity:0.55;marker-end:url(#arrow-head);}
+#svg-overlay path.cross-active{opacity:1;stroke-width:2.5;}
+#svg-overlay path.cross-dimmed{opacity:0.08;}
+#svg-overlay path.cross-scenario{opacity:1;stroke-width:3;}
+
+/* SCENARIO PANEL */
+.scenario-bar{background:var(--bg);border-bottom:0.5px solid var(--border2);padding:0.45rem 1rem;display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap;}
+.scenario-bar h4{font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;}
+.scenario-btn{font-size:11px;padding:5px 10px;border:0.5px solid var(--border2);border-radius:20px;background:var(--bg2);color:var(--text2);cursor:pointer;white-space:nowrap;transition:all 0.12s;}
+.scenario-btn:hover{background:var(--bg3);color:var(--text);}
+.scenario-btn.active{color:#fff;border-color:transparent;}
+.scenario-clear{font-size:11px;padding:5px 10px;border:0.5px solid var(--border2);border-radius:20px;background:var(--bg2);color:var(--text3);cursor:pointer;}
+.scenario-clear:hover{background:var(--bg3);}
+
+/* SCENARIO STEP BADGE on node */
+.node-step{
+  position:absolute;top:-8px;left:-8px;
+  width:18px;height:18px;border-radius:50%;
+  font-size:9px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;border:1.5px solid rgba(255,255,255,0.6);
+  z-index:5;pointer-events:none;
+}
+
+/* MITRE FILTER */
+.mitre-wrap{position:relative;}
+.mitre-select{padding:6px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);font-size:12px;background:var(--bg2);color:var(--text);outline:none;cursor:pointer;max-width:190px;}
+.mitre-select:focus{border-color:var(--blue);}
+.mitre-select.has-filter{border-color:var(--blue);background:var(--blue-bg);color:var(--blue);}
+
+/* TIMING */
+.timing-list{display:flex;flex-direction:column;gap:5px;}
+.timing-item{font-size:11px;padding:6px 8px;background:var(--bg2);border-radius:var(--radius);border:0.5px solid var(--border);display:flex;flex-direction:column;gap:3px;cursor:pointer;}
+.timing-item:hover{background:var(--bg3);}
+.timing-header{display:flex;align-items:center;gap:6px;}
+.timing-eid{font-weight:500;color:var(--blue);font-family:'Courier New',monospace;flex-shrink:0;}
+.timing-short{color:var(--text2);flex:1;}
+.timing-badge{font-size:9px;padding:1px 6px;border-radius:20px;white-space:nowrap;flex-shrink:0;}
+.t-instant{background:#E6F1FB;color:#185FA5;}
+.t-seconds{background:#EAF3DE;color:#3B6D11;}
+.t-minutes{background:#FAEEDA;color:#854F0B;}
+.t-variable{background:#F1EFE8;color:#5F5E5A;}
+.t-triggered{background:#EEEDFE;color:#533489;}
+@media(prefers-color-scheme:dark){
+  .t-instant{background:#042C53;color:#85B7EB;}
+  .t-seconds{background:#173404;color:#C0DD97;}
+  .t-minutes{background:#412402;color:#FAC775;}
+  .t-variable{background:#2C2C2A;color:#B4B2A9;}
+  .t-triggered{background:#26215C;color:#AFA9EC;}
+}
+.timing-note{font-size:10px;color:var(--text3);line-height:1.3;}
+.timing-anomaly{font-size:10px;color:#A32D2D;line-height:1.3;margin-top:1px;}
+@media(prefers-color-scheme:dark){.timing-anomaly{color:#F09595;}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🛡 Event ID Flow Graph</h1>
+  <div class="header-controls">
+    <input type="text" id="search" placeholder="Buscar ID ou descrição..." oninput="doSearch(this.value)">
+    <button class="btn" onclick="clearSearch()">Limpar</button>
+    <button class="btn" id="btn-zoom-in" onclick="zoom(0.15)">＋ Zoom</button>
+    <button class="btn" id="btn-zoom-out" onclick="zoom(-0.15)">－ Zoom</button>
+    <button class="btn" onclick="resetZoom()">Reset</button>
+    <button class="btn" id="btn-highlight" onclick="toggleHighlightMode()">Modo: Selecionar</button>
+    <div class="mitre-wrap">
+      <select class="mitre-select" id="mitre-filter" onchange="applyMitreFilter(this.value)" title="Filtrar por técnica MITRE ATT&CK">
+        <option value="">MITRE ATT&amp;CK...</option>
+      </select>
+    </div>
+  </div>
+    <div class="leg-item"><div class="leg-dot" style="background:#A32D2D"></div>Alta</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#854F0B"></div>Média</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#3B6D11"></div>Baixa</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#185FA5"></div>Info</div>
+  </div>
+</div>
+
+<div class="scenario-bar" id="scenario-bar">
+  <h4>⚔ Cenários</h4>
+  <div id="scenario-btns"></div>
+  <button class="scenario-clear" id="scenario-clear" onclick="clearScenario()" style="display:none">✕ Limpar</button>
+</div>
+<div class="workspace">
+  <div class="layer-sidebar">
+    <h3>Camadas</h3>
+    <div id="layer-nav"></div>
+  </div>
+
+  <div class="canvas-wrap" id="canvas-wrap">
+    <svg id="svg-overlay" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow-head" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="currentColor" class="arrow-marker-fill"/>
+        </marker>
+      </defs>
+    </svg>
+    <div id="canvas">
+      <div id="canvas-inner"></div>
+    </div>
+  </div>
+
+  <div class="detail-panel hidden" id="detail-panel">
+    <div class="detail-close"><button class="btn" onclick="closeDetail()">✕ Fechar</button></div>
+    <div class="detail-eid" id="d-eid"></div>
+    <div class="detail-desc" id="d-desc"></div>
+    <div id="d-crit"></div>
+    <div class="detail-section">Log</div><div class="detail-val" id="d-log"></div>
+    <div class="detail-section">ID Legado</div><div class="detail-val" id="d-legacy"></div>
+    <div class="detail-section">MITRE ATT&CK</div><div class="detail-val" id="d-mitre"></div>
+    <div class="detail-section" id="d-timing-lbl" style="display:none">Janelas de tempo típicas</div>
+    <div class="timing-list" id="d-timing"></div>
+    <div class="detail-section" id="d-succ-lbl" style="display:none">Eventos que podem seguir</div>
+    <div class="related-list" id="d-successors"></div>
+    <div class="detail-section" id="d-pred-lbl" style="display:none">Eventos que podem preceder</div>
+    <div class="related-list" id="d-predecessors"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+// DATA — 7 camadas lógicas, ~200 eventos
+// Cada evento: id, short (rótulo curto), desc, crit, log, legacy, mitre
+// succs: IDs que naturalmente se seguem a este (dentro e entre camadas)
+// ══════════════════════════════════════════════════════════════════
+const LAYERS = [
+  {
+    id:"l1", name:"Sistema", color:"#5F5E5A",
+    desc:"Eventos de ciclo de vida do sistema operacional",
+    events:[
+      {id:"41",   short:"Crash",         desc:"Sistema reiniciou sem desligamento correto anterior",            crit:"Medium",log:"System",  legacy:"N/A", mitre:"",                            succs:["6008","4608"]},
+      {id:"12",   short:"OS Start",      desc:"Startup do sistema operacional registrado pelo kernel",          crit:"Low",   log:"System",  legacy:"N/A", mitre:"",                            succs:["6005","4608"]},
+      {id:"13",   short:"OS Shutdown",   desc:"Shutdown do sistema operacional registrado pelo kernel",         crit:"Low",   log:"System",  legacy:"N/A", mitre:"",                            succs:["6006","4609"]},
+      {id:"6005", short:"Log Started",   desc:"Serviço de log de eventos iniciado — indica startup do sistema", crit:"Low",  log:"System",  legacy:"N/A", mitre:"",                            succs:["4608","4624"]},
+      {id:"6006", short:"Log Stopped",   desc:"Serviço de log de eventos parado — indica shutdown correto",     crit:"Low",  log:"System",  legacy:"N/A", mitre:"",                            succs:["4609"]},
+      {id:"6008", short:"Unexp.Shutdown",desc:"O desligamento anterior do sistema foi inesperado",             crit:"Medium",log:"System",  legacy:"N/A", mitre:"",                            succs:["4608"]},
+      {id:"6009", short:"OS Version",    desc:"Versão do Windows detectada no boot",                           crit:"Low",   log:"System",  legacy:"N/A", mitre:"",                            succs:["6005"]},
+      {id:"6013", short:"Uptime",        desc:"Exibe o uptime do computador em segundos",                       crit:"Low",  log:"System",  legacy:"N/A", mitre:"",                            succs:[]},
+      {id:"4608", short:"Win Starting",  desc:"Windows está iniciando",                                        crit:"Low",   log:"Security",legacy:"512", mitre:"",                            succs:["4610","4611","4614","4624"]},
+      {id:"4609", short:"Win Shutting",  desc:"Windows está desligando",                                       crit:"Low",   log:"Security",legacy:"513", mitre:"",                            succs:["6006"]},
+      {id:"1074", short:"Shutdown Init", desc:"Desligamento ou reinício iniciado por usuário ou processo",     crit:"Low",   log:"System",  legacy:"N/A", mitre:"",                            succs:["4609","6006"]},
+      {id:"4610", short:"Auth Pkg Load", desc:"Pacote de autenticação carregado pela LSA",                     crit:"Low",   log:"Security",legacy:"514", mitre:"",                            succs:["4611"]},
+      {id:"4611", short:"Logon Proc",    desc:"Processo de logon confiável registrado com a LSA",              crit:"Low",   log:"Security",legacy:"515", mitre:"",                            succs:["4614"]},
+      {id:"4614", short:"Notif Pkg",     desc:"Pacote de notificação carregado pelo SAM",                      crit:"Low",   log:"Security",legacy:"518", mitre:"",                            succs:["4622"]},
+      {id:"4622", short:"Sec Pkg Load",  desc:"Pacote de segurança carregado pela LSA",                        crit:"Low",   log:"Security",legacy:"N/A", mitre:"",                            succs:["4624"]},
+      {id:"4826", short:"BCD Loaded",    desc:"Dados de configuração do boot carregados",                      crit:"Low",   log:"Security",legacy:"N/A", mitre:"",                            succs:["6005"]},
+    ]
+  },
+  {
+    id:"l2", name:"Autenticação", color:"#185FA5",
+    desc:"Quem tenta entrar, como e com qual resultado",
+    events:[
+      {id:"4625", short:"Logon Failed",  desc:"Uma conta falhou ao fazer logon",                               crit:"Low",   log:"Security",legacy:"529-537,539",mitre:"T1110 – Brute Force",   succs:["4740","4625","4624"]},
+      {id:"4740", short:"Locked Out",    desc:"Uma conta de usuário foi bloqueada",                            crit:"Medium",log:"Security",legacy:"539",        mitre:"T1110 – Brute Force",   succs:["4767","4625"]},
+      {id:"4767", short:"Unlocked",      desc:"Uma conta de usuário foi desbloqueada",                        crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:["4624"]},
+      {id:"4624", short:"Logon OK",      desc:"Uma conta fez logon com sucesso",                              crit:"Low",   log:"Security",legacy:"528,540",     mitre:"T1078 – Valid Accounts", succs:["4672","4634","4648","4688","4778"]},
+      {id:"4634", short:"Logoff",        desc:"Uma conta fez logoff",                                         crit:"Low",   log:"Security",legacy:"538",         mitre:"",                      succs:["4647"]},
+      {id:"4647", short:"User Logoff",   desc:"Logoff iniciado pelo usuário",                                 crit:"Low",   log:"Security",legacy:"551",         mitre:"",                      succs:["4634"]},
+      {id:"4648", short:"Explicit Cred", desc:"Tentativa de logon com credenciais explícitas",                crit:"Low",   log:"Security",legacy:"552",         mitre:"T1134 – Token Manip.",  succs:["4624","4672"]},
+      {id:"4649", short:"Replay Detect", desc:"Um ataque de replay foi detectado",                            crit:"High",  log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
+      {id:"4768", short:"TGT Request",   desc:"Ticket de autenticação Kerberos (TGT) foi solicitado",         crit:"Low",   log:"Security",legacy:"672",         mitre:"T1558 – Kerberos",      succs:["4769","4624"]},
+      {id:"4769", short:"TGS Request",   desc:"Ticket de serviço Kerberos (TGS) foi solicitado",             crit:"Low",   log:"Security",legacy:"673",         mitre:"T1558 – Kerberos",      succs:["4624","4770"]},
+      {id:"4770", short:"TGS Renew",     desc:"Ticket de serviço Kerberos renovado",                         crit:"Low",   log:"Security",legacy:"674",         mitre:"",                      succs:["4769"]},
+      {id:"4771", short:"Kerb PreAuth",  desc:"Pré-autenticação Kerberos falhou",                            crit:"Low",   log:"Security",legacy:"N/A",         mitre:"T1558 – Kerberos",      succs:["4768","4625"]},
+      {id:"4772", short:"TGT Failed",    desc:"Solicitação de ticket de autenticação Kerberos falhou",        crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:["4625"]},
+      {id:"4773", short:"TGS Failed",    desc:"Solicitação de ticket de serviço Kerberos falhou",            crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
+      {id:"4776", short:"NTLM Validate", desc:"DC tentou validar as credenciais de uma conta via NTLM",      crit:"Low",   log:"Security",legacy:"680",         mitre:"T1110 – Brute Force",   succs:["4624","4625"]},
+      {id:"4777", short:"NTLM Failed",   desc:"DC falhou ao validar as credenciais de uma conta",            crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:["4625"]},
+      {id:"4820", short:"TGT Denied",    desc:"TGT Kerberos negado – dispositivo não atende restrições",     crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
+      {id:"4821", short:"TGS Denied",    desc:"Ticket de serviço Kerberos negado – restrições de acesso",   crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
+      {id:"4822", short:"NTLM ProtUser", desc:"Autenticação NTLM falhou – conta no grupo Protected User",   crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
+      {id:"4823", short:"NTLM ACL",      desc:"Autenticação NTLM falhou – restrições de controle de acesso",crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
+      {id:"4824", short:"Kerb DES Fail", desc:"Pré-autenticação Kerberos via DES/RC4 falhou (Protected User)",crit:"Low", log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
+    ]
+  },
+  {
+    id:"l3", name:"Autorização & Sessão", color:"#3B6D11",
+    desc:"O que acontece imediatamente após o logon bem-sucedido",
+    events:[
+      {id:"4672", short:"Special Privs", desc:"Privilégios especiais atribuídos ao novo logon",              crit:"Low",   log:"Security",legacy:"576",         mitre:"T1078 – Valid Accounts", succs:["4688","4673","4674"]},
+      {id:"4964", short:"Special Groups",desc:"Grupos especiais foram atribuídos a novo logon",              crit:"High",  log:"Security",legacy:"N/A",         mitre:"",                      succs:["4672"]},
+      {id:"4778", short:"Session Recon", desc:"Uma sessão foi reconectada a uma Estação Windows",            crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:["4688"]},
+      {id:"4779", short:"Session Disc",  desc:"Uma sessão foi desconectada de uma Estação Windows",         crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:["4634"]},
+      {id:"4800", short:"WS Locked",     desc:"A estação de trabalho foi bloqueada",                        crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:["4801"]},
+      {id:"4801", short:"WS Unlocked",   desc:"A estação de trabalho foi desbloqueada",                     crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:["4624"]},
+      {id:"4802", short:"Screensaver On",desc:"O protetor de tela foi ativado",                             crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:["4800"]},
+      {id:"4803", short:"Screensaver Off",desc:"O protetor de tela foi desativado",                         crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:["4801"]},
+      {id:"4825", short:"RDP Denied",    desc:"Usuário teve acesso ao Remote Desktop negado",               crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
+      {id:"4626", short:"Claims Info",   desc:"Informações de reivindicações de usuário/dispositivo",       crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
+      {id:"4627", short:"Group Members", desc:"Informações de associação em grupo",                         crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
+      {id:"4774", short:"Acct Mapped",   desc:"Uma conta foi mapeada para logon",                           crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:["4624"]},
+      {id:"4775", short:"Map Failed",    desc:"Uma conta não pôde ser mapeada para logon",                  crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:["4625"]},
+    ]
+  },
+  {
+    id:"l4", name:"Identidade & Grupos", color:"#854F0B",
+    desc:"Criação, modificação e exclusão de contas e grupos",
+    events:[
+      {id:"4720", short:"User Created",  desc:"Uma conta de usuário foi criada",                            crit:"Low",   log:"Security",legacy:"624",         mitre:"T1136 – Create Account", succs:["4722","4728","4732"]},
+      {id:"4722", short:"User Enabled",  desc:"Uma conta de usuário foi habilitada",                       crit:"Low",   log:"Security",legacy:"626",         mitre:"",                      succs:["4624"]},
+      {id:"4723", short:"Pwd Change",    desc:"Tentativa de alterar a senha de uma conta",                 crit:"Low",   log:"Security",legacy:"627",         mitre:"",                      succs:[]},
+      {id:"4724", short:"Pwd Reset",     desc:"Tentativa de redefinir a senha de uma conta",              crit:"Medium",log:"Security",legacy:"628",          mitre:"T1098 – Acct Manip.",   succs:["4624"]},
+      {id:"4725", short:"User Disabled", desc:"Uma conta de usuário foi desabilitada",                    crit:"Low",   log:"Security",legacy:"629",          mitre:"",                      succs:[]},
+      {id:"4726", short:"User Deleted",  desc:"Uma conta de usuário foi deletada",                        crit:"Low",   log:"Security",legacy:"630",          mitre:"",                      succs:[]},
+      {id:"4738", short:"User Changed",  desc:"Uma conta de usuário foi alterada",                        crit:"Low",   log:"Security",legacy:"642",          mitre:"",                      succs:[]},
+      {id:"4781", short:"Acct Renamed",  desc:"O nome de uma conta foi alterado",                         crit:"Low",   log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"4782", short:"Pwd Hash Acc.", desc:"O hash de senha de uma conta foi acessado",                crit:"Low",   log:"Security",legacy:"N/A",          mitre:"T1003 – Cred Dump",     succs:[]},
+      {id:"4793", short:"Pwd Policy",    desc:"API de verificação de política de senha foi chamada",      crit:"Low",   log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"4797", short:"Blank Pwd",     desc:"Tentativa de verificar existência de senha em branco",     crit:"Low",   log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"4798", short:"LocalGrp Enum", desc:"Associação em grupo local de um usuário foi enumerada",   crit:"Low",   log:"Security",legacy:"N/A",          mitre:"T1069 – Grp Discovery", succs:[]},
+      {id:"4799", short:"SecGrp Enum",   desc:"Associação em grupo local com segurança habilitada enumerada",crit:"Low",log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"4727", short:"Global Grp+",   desc:"Um grupo global com segurança habilitada foi criado",      crit:"Medium",log:"Security",legacy:"631",          mitre:"",                      succs:["4728"]},
+      {id:"4728", short:"Global Mbr+",   desc:"Membro adicionado a grupo global com segurança habilitada",crit:"Medium",log:"Security",legacy:"636",         mitre:"T1098 – Acct Manip.",   succs:["4624"]},
+      {id:"4729", short:"Global Mbr-",   desc:"Membro removido de grupo global com segurança habilitada", crit:"Low",  log:"Security",legacy:"637",          mitre:"",                      succs:[]},
+      {id:"4730", short:"Global Grp-",   desc:"Grupo global com segurança habilitada foi deletado",       crit:"Low",  log:"Security",legacy:"638",          mitre:"",                      succs:[]},
+      {id:"4731", short:"Local Grp+",    desc:"Grupo local com segurança habilitada foi criado",          crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:["4732"]},
+      {id:"4732", short:"Local Mbr+",    desc:"Membro adicionado a grupo local com segurança habilitada", crit:"Medium",log:"Security",legacy:"636",         mitre:"T1098 – Acct Manip.",   succs:["4624"]},
+      {id:"4733", short:"Local Mbr-",    desc:"Membro removido de grupo local com segurança habilitada",  crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"4734", short:"Local Grp-",    desc:"Grupo local com segurança habilitada foi deletado",        crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"4735", short:"Local Grp Chg", desc:"Grupo local com segurança habilitada foi alterado",        crit:"Medium",log:"Security",legacy:"639",         mitre:"",                      succs:[]},
+      {id:"4737", short:"Global Grp Chg",desc:"Grupo global com segurança habilitada foi alterado",       crit:"Medium",log:"Security",legacy:"641",         mitre:"",                      succs:[]},
+      {id:"4754", short:"Univ Grp+",     desc:"Grupo universal com segurança habilitada foi criado",      crit:"Medium",log:"Security",legacy:"658",         mitre:"",                      succs:["4756"]},
+      {id:"4755", short:"Univ Grp Chg",  desc:"Grupo universal com segurança habilitada foi alterado",    crit:"Medium",log:"Security",legacy:"659",         mitre:"",                      succs:[]},
+      {id:"4756", short:"Univ Mbr+",     desc:"Membro adicionado a grupo universal com segurança habilitada",crit:"Medium",log:"Security",legacy:"N/A",      mitre:"T1098 – Acct Manip.",   succs:[]},
+      {id:"4757", short:"Univ Mbr-",     desc:"Membro removido de grupo universal com segurança habilitada",crit:"Low", log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
+      {id:"4758", short:"Univ Grp-",     desc:"Grupo universal com segurança habilitada foi deletado",    crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"4764", short:"Grp Type Chg",  desc:"Tipo de grupo foi alterado",                               crit:"Medium",log:"Security",legacy:"668",         mitre:"",                      succs:[]},
+      {id:"4765", short:"SID Hist Add",  desc:"SID History foi adicionado a uma conta",                   crit:"High", log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"4766", short:"SID Hist Fail", desc:"Tentativa de adicionar SID History a uma conta falhou",    crit:"High", log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"4780", short:"Admin ACL Set", desc:"ACL definida em contas membros de grupos de administradores",crit:"Medium",log:"Security",legacy:"684",        mitre:"",                      succs:[]},
+      {id:"4741", short:"Comp Acct+",    desc:"Uma conta de computador foi criada",                       crit:"Low",  log:"Security",legacy:"N/A",          mitre:"T1136 – Create Account", succs:["4742"]},
+      {id:"4742", short:"Comp Acct Chg", desc:"Uma conta de computador foi alterada",                    crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"4743", short:"Comp Acct-",    desc:"Uma conta de computador foi deletada",                    crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+    ]
+  },
+  {
+    id:"l5", name:"Processos & Serviços", color:"#533489",
+    desc:"Criação de processos, serviços e tarefas agendadas",
+    events:[
+      {id:"4688", short:"Proc Created",  desc:"Um novo processo foi criado",                               crit:"Low",  log:"Security",legacy:"592",          mitre:"T1059 – Scripting",     succs:["4689","4656","4663","4697","4698"]},
+      {id:"4689", short:"Proc Exited",   desc:"Um processo foi encerrado",                                 crit:"Low",  log:"Security",legacy:"593",          mitre:"",                      succs:[]},
+      {id:"4690", short:"Handle Dup",    desc:"Tentativa de duplicar um handle para um objeto",            crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"4696", short:"Token Assigned",desc:"Um token primário foi atribuído ao processo",               crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:["4688"]},
+      {id:"4697", short:"Svc Installed", desc:"Um serviço foi instalado no sistema",                       crit:"Low",  log:"Security",legacy:"N/A",          mitre:"T1543 – Sys Process",   succs:["7045","7036","4688"]},
+      {id:"7045", short:"New Service",   desc:"Novo serviço Windows instalado",                            crit:"Low",  log:"System",  legacy:"N/A",          mitre:"T1543 – Sys Process",   succs:["7036","4688"]},
+      {id:"7000", short:"Svc Start Fail",desc:"Falha ao iniciar serviço",                                  crit:"Low",  log:"System",  legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"7036", short:"Svc State Chg", desc:"Serviço entrou no estado running ou stopped",               crit:"Low",  log:"System",  legacy:"N/A",          mitre:"",                      succs:["4688"]},
+      {id:"7009", short:"Svc Timeout",   desc:"Timeout de serviço ocorreu",                                crit:"Low",  log:"System",  legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"7023", short:"Svc Error",     desc:"Serviço encerrado com erro específico",                     crit:"Low",  log:"System",  legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"7024", short:"Svc Term Err",  desc:"Serviço encerrado com erro de serviço específico",          crit:"Low",  log:"System",  legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"4698", short:"Task Created",  desc:"Uma tarefa agendada foi criada",                            crit:"Low",  log:"Security",legacy:"N/A",          mitre:"T1053 – Sched. Task",   succs:["4702","4700","4688"]},
+      {id:"4699", short:"Task Deleted",  desc:"Uma tarefa agendada foi deletada",                          crit:"Low",  log:"Security",legacy:"N/A",          mitre:"T1053 – Sched. Task",   succs:[]},
+      {id:"4700", short:"Task Enabled",  desc:"Uma tarefa agendada foi habilitada",                        crit:"Low",  log:"Security",legacy:"N/A",          mitre:"T1053 – Sched. Task",   succs:["4688"]},
+      {id:"4701", short:"Task Disabled", desc:"Uma tarefa agendada foi desabilitada",                      crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"4702", short:"Task Updated",  desc:"Uma tarefa agendada foi atualizada",                        crit:"Low",  log:"Security",legacy:"N/A",          mitre:"T1053 – Sched. Task",   succs:["4688"]},
+      {id:"903",  short:"App Install",   desc:"Nova instalação de aplicativo detectada",                   crit:"Low",  log:"Application",legacy:"N/A",       mitre:"T1072 – SW Deploy",     succs:["904"]},
+      {id:"904",  short:"App Install+",  desc:"Instalação de aplicativo concluída",                       crit:"Low",  log:"Application",legacy:"N/A",       mitre:"",                      succs:[]},
+      {id:"1022", short:"MSI Installed", desc:"Novo arquivo MSI instalado",                               crit:"Low",  log:"Application",legacy:"N/A",       mitre:"",                      succs:[]},
+      {id:"1033", short:"MSI Complete",  desc:"Instalação MSI concluída",                                 crit:"Low",  log:"Application",legacy:"N/A",       mitre:"",                      succs:[]},
+      {id:"19",   short:"WU Installed",  desc:"Windows Update instalado",                                 crit:"Low",  log:"System",  legacy:"N/A",          mitre:"",                      succs:[]},
+    ]
+  },
+  {
+    id:"l6", name:"Objetos & Política", color:"#0F6E56",
+    desc:"Acesso a arquivos, objetos, registro e alterações de política",
+    events:[
+      {id:"4656", short:"Handle Req",    desc:"Um handle para um objeto foi solicitado",                   crit:"Low",  log:"Security",legacy:"560",          mitre:"",                      succs:["4663","4658","4660"]},
+      {id:"4657", short:"Reg Modified",  desc:"Um valor de registro foi modificado",                      crit:"Low",  log:"Security",legacy:"567",          mitre:"T1112 – Mod Registry",  succs:[]},
+      {id:"4658", short:"Handle Closed", desc:"O handle para um objeto foi fechado",                      crit:"Low",  log:"Security",legacy:"562",          mitre:"",                      succs:[]},
+      {id:"4659", short:"Handle Del Req",desc:"Handle solicitado com intenção de deletar",                crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:["4660"]},
+      {id:"4660", short:"Obj Deleted",   desc:"Um objeto foi deletado",                                   crit:"Low",  log:"Security",legacy:"564",          mitre:"",                      succs:[]},
+      {id:"4661", short:"Handle Req2",   desc:"Um handle para um objeto foi solicitado",                  crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:["4662"]},
+      {id:"4662", short:"AD Op Perf",    desc:"Uma operação foi realizada em um objeto AD",               crit:"Low",  log:"Security",legacy:"566",          mitre:"T1530 – Data Local",    succs:["4932","4933"]},
+      {id:"4663", short:"Obj Access",    desc:"Tentativa de acessar um objeto",                           crit:"Low",  log:"Security",legacy:"567",          mitre:"T1222 – File Perms",    succs:["4670"]},
+      {id:"4664", short:"Hard Link",     desc:"Tentativa de criar um hard link",                          crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"4670", short:"Perms Changed", desc:"Permissões em um objeto foram alteradas",                  crit:"Low",  log:"Security",legacy:"N/A",          mitre:"T1078 – Valid Accounts", succs:[]},
+      {id:"4673", short:"Priv Svc Call", desc:"Um serviço privilegiado foi chamado",                     crit:"Low",  log:"Security",legacy:"577",          mitre:"",                      succs:[]},
+      {id:"4674", short:"Priv Op",       desc:"Operação tentada em um objeto privilegiado",               crit:"Low",  log:"Security",legacy:"578",          mitre:"",                      succs:[]},
+      {id:"4703", short:"Token Right",   desc:"Um direito de token foi ajustado",                         crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"4704", short:"Right Assign",  desc:"Um direito de usuário foi atribuído",                     crit:"Low",  log:"Security",legacy:"608",          mitre:"",                      succs:[]},
+      {id:"4705", short:"Right Remove",  desc:"Um direito de usuário foi removido",                      crit:"Low",  log:"Security",legacy:"609",          mitre:"",                      succs:[]},
+      {id:"4715", short:"SACL Changed",  desc:"A política de auditoria (SACL) em um objeto foi alterada",crit:"Medium",log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
+      {id:"4817", short:"Audit Changed", desc:"Configurações de auditoria em objeto foram alteradas",     crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"4907", short:"Audit Settings",desc:"Configurações de auditoria em objeto foram alteradas",     crit:"Medium",log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
+      {id:"4719", short:"Audit Policy",  desc:"Política de auditoria do sistema foi alterada",            crit:"High", log:"Security",legacy:"612",          mitre:"",                      succs:["1102","104"]},
+      {id:"4739", short:"Domain Policy", desc:"Política de Domínio foi alterada",                         crit:"Medium",log:"Security",legacy:"643",         mitre:"",                      succs:[]},
+      {id:"6145", short:"GPO Error",     desc:"Erros ao processar política de segurança nos GPOs",        crit:"Medium",log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
+      {id:"1030", short:"GPO No Read",   desc:"Configurações de Política de Grupo não puderam ser lidas",crit:"Low",  log:"System",  legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"1058", short:"Sysvol Fail",   desc:"Computador não conseguiu acessar o compartilhamento Sysvol",crit:"Low", log:"System",  legacy:"N/A",         mitre:"",                      succs:[]},
+      {id:"1704", short:"GPO Applied",   desc:"GPO aplicado com sucesso ao computador cliente",           crit:"Low",  log:"System",  legacy:"N/A",          mitre:"",                      succs:[]},
+    ]
+  },
+  {
+    id:"l7", name:"Auditoria & Rede", color:"#A32D2D",
+    desc:"Log de auditoria, firewall, AD replication e certificados",
+    events:[
+      {id:"1100", short:"Log Svc Down",  desc:"Serviço de log de eventos foi encerrado",                  crit:"High", log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"1101", short:"Audit Drop",    desc:"Eventos de auditoria foram descartados pelo transporte",   crit:"High", log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"1102", short:"Log Cleared",   desc:"O log de auditoria de segurança foi limpo",               crit:"High", log:"Security",legacy:"517",           mitre:"T1070 – Indicator Rmv", succs:[]},
+      {id:"104",  short:"Sys Log Clear", desc:"Log de eventos do sistema foi limpo",                     crit:"High", log:"System",  legacy:"N/A",           mitre:"T1070 – Indicator Rmv", succs:[]},
+      {id:"1104", short:"Log Full",      desc:"O log de segurança está cheio",                           crit:"Medium",log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"1105", short:"Log Backup",    desc:"Backup automático do log de eventos",                     crit:"Low",  log:"Security",legacy:"N/A",           mitre:"",                      succs:[]},
+      {id:"1108", short:"Log Svc Error", desc:"O serviço de log de eventos encontrou um erro",           crit:"Medium",log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"4946", short:"FW Rule+",      desc:"Regra adicionada à lista de exceções do Windows Firewall",crit:"Low",  log:"Security",legacy:"N/A",           mitre:"T1562 – Impair Def.",   succs:[]},
+      {id:"4947", short:"FW Rule Chg",   desc:"Regra modificada na lista de exceções do Windows Firewall",crit:"Low", log:"Security",legacy:"N/A",           mitre:"T1562 – Impair Def.",   succs:[]},
+      {id:"4948", short:"FW Rule-",      desc:"Regra deletada da lista de exceções do Windows Firewall", crit:"Low",  log:"Security",legacy:"N/A",           mitre:"T1562 – Impair Def.",   succs:[]},
+      {id:"4949", short:"FW Reset",      desc:"Configurações do Windows Firewall restauradas para padrão",crit:"Low", log:"Security",legacy:"N/A",           mitre:"",                      succs:[]},
+      {id:"4954", short:"FW GPO",        desc:"Configurações de Política de Grupo do Windows Firewall alteradas",crit:"Medium",log:"Security",legacy:"N/A",  mitre:"",                      succs:[]},
+      {id:"4956", short:"FW Profile",    desc:"Windows Firewall alterou o perfil ativo",                 crit:"Low",  log:"Security",legacy:"N/A",           mitre:"",                      succs:[]},
+      {id:"5027", short:"FW No Policy",  desc:"Serviço do Windows Firewall não conseguiu recuperar a política",crit:"Medium",log:"Security",legacy:"N/A",    mitre:"",                      succs:[]},
+      {id:"5030", short:"FW Svc Fail",   desc:"Serviço do Windows Firewall falhou ao iniciar",           crit:"Medium",log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"5035", short:"FW Drv Fail",   desc:"Driver do Windows Firewall falhou ao iniciar",            crit:"Medium",log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"4960", short:"IPsec Int Fail",desc:"IPsec descartou pacote – falha na verificação de integridade",crit:"Medium",log:"Security",legacy:"N/A",      mitre:"",                      succs:[]},
+      {id:"4961", short:"IPsec Replay",  desc:"IPsec descartou pacote – falha na verificação de replay", crit:"Medium",log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"4963", short:"IPsec Cleartext",desc:"IPsec descartou pacote cleartext que deveria estar protegido",crit:"Medium",log:"Security",legacy:"N/A",     mitre:"",                      succs:[]},
+      {id:"6273", short:"NPS Denied",    desc:"Network Policy Server negou acesso a um usuário",         crit:"Medium",log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"6279", short:"NPS Locked",    desc:"NPS bloqueou conta de usuário por falhas repetidas",      crit:"Medium",log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"4706", short:"Trust Created", desc:"Uma nova relação de confiança foi criada para um domínio",crit:"Medium",log:"Security",legacy:"610",           mitre:"",                      succs:[]},
+      {id:"4716", short:"Trust Modified",desc:"Informações de domínio confiável foram modificadas",      crit:"Medium",log:"Security",legacy:"620",           mitre:"",                      succs:[]},
+      {id:"4794", short:"DSRM Set",      desc:"Tentativa de definir a senha do Modo de Restauração do DS",crit:"High",log:"Security",legacy:"N/A",           mitre:"",                      succs:[]},
+      {id:"4865", short:"Forest Entry+", desc:"Entrada de informação de floresta confiável foi adicionada",crit:"Medium",log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
+      {id:"4928", short:"AD Src NC Est.",desc:"Contexto de nomenclatura de fonte de réplica AD estabelecido",crit:"Low",log:"Security",legacy:"N/A",          mitre:"T1003.006 – DCSync",    succs:["4932"]},
+      {id:"4932", short:"AD Repl Begin", desc:"Sincronização de réplica de contexto de nomenclatura AD começou",crit:"Low",log:"Security",legacy:"N/A",       mitre:"T1003.006 – DCSync",    succs:["4933","4934"]},
+      {id:"4933", short:"AD Repl End",   desc:"Sincronização de réplica de contexto de nomenclatura AD terminou",crit:"Low",log:"Security",legacy:"N/A",      mitre:"",                      succs:[]},
+      {id:"4934", short:"AD Attr Repl",  desc:"Atributos de um objeto AD foram replicados",              crit:"Low",  log:"Security",legacy:"N/A",            mitre:"",                      succs:[]},
+      {id:"4935", short:"Repl Fail Bgn", desc:"Início de falha de replicação",                           crit:"Low",  log:"Security",legacy:"N/A",            mitre:"",                      succs:["4936"]},
+      {id:"4936", short:"Repl Fail End", desc:"Fim de falha de replicação",                              crit:"Low",  log:"Security",legacy:"N/A",            mitre:"",                      succs:[]},
+      {id:"5827", short:"Netlogon Deny", desc:"Netlogon negou conexão vulnerável de conta de máquina",   crit:"Medium",log:"Security",legacy:"N/A",          mitre:"T1210 – Remote Exploit", succs:[]},
+      {id:"4868", short:"Cert Denied",   desc:"Gerenciador de certificados negou solicitação pendente",  crit:"Medium",log:"Security",legacy:"772",           mitre:"",                      succs:[]},
+      {id:"4870", short:"Cert Revoked",  desc:"Certificate Services revogou um certificado",            crit:"Medium",log:"Security",legacy:"774",            mitre:"",                      succs:[]},
+      {id:"4882", short:"CS Perms Chg",  desc:"Permissões de segurança dos Certificate Services foram alteradas",crit:"Medium",log:"Security",legacy:"786",   mitre:"",                      succs:[]},
+      {id:"4896", short:"CS Rows Del",   desc:"Linhas deletadas do banco de dados de certificados",      crit:"Medium",log:"Security",legacy:"800",           mitre:"",                      succs:[]},
+      {id:"4897", short:"CS Role Sep",   desc:"Separação de função habilitada nos Certificate Services", crit:"High", log:"Security",legacy:"801",            mitre:"",                      succs:[]},
+      {id:"5124", short:"OCSP Updated",  desc:"Configuração de segurança atualizada no OCSP Responder Service",crit:"High",log:"Security",legacy:"N/A",       mitre:"",                      succs:[]},
+    ]
+  },
+];
+
+// ══════════════════════════════════════════════════════════════════
+// INDEX
+// ══════════════════════════════════════════════════════════════════
+const evtMap = {};
+LAYERS.forEach(l=>l.events.forEach(ev=>{evtMap[ev.id]={...ev,layer:l.id,layerName:l.name,layerColor:l.color};}));
+
+// build predecessor index from successors
+const predMap = {};
+LAYERS.forEach(l=>l.events.forEach(ev=>{
+  (ev.succs||[]).forEach(sid=>{
+    if(!predMap[sid]) predMap[sid]=[];
+    predMap[sid].push(ev.id);
+  });
+}));
+
+// ══════════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════════
+let zoomLevel = 1;
+let selectedNode = null;
+let highlightMode = false;
+let searchFilter = '';
+let activeScenario = null;
+let mitreFilter = '';
+
+// ══════════════════════════════════════════════════════════════════
+// SCENARIOS — attack chain definitions
+// ══════════════════════════════════════════════════════════════════
+const SCENARIOS = [
+  {
+    id:'brute-force',
+    name:'Brute Force → Acesso',
+    color:'#A32D2D',
+    mitre:'T1110',
+    steps:['4625','4625','4740','4767','4624','4672','4688'],
+    desc:'Múltiplas falhas de autenticação seguidas de bloqueio, desbloqueio e eventual acesso privilegiado com execução de processo.'
+  },
+  {
+    id:'pass-the-hash',
+    name:'Pass-the-Hash',
+    color:'#854F0B',
+    mitre:'T1550.002',
+    steps:['4624','4648','4672','4688','4697','7045','7036'],
+    desc:'Logon com credenciais explícitas via hash NTLM, escalada de privilégio, criação de processo e instalação de serviço persistente.'
+  },
+  {
+    id:'kerberoasting',
+    name:'Kerberoasting',
+    color:'#533489',
+    mitre:'T1558.003',
+    steps:['4768','4769','4769','4624','4688'],
+    desc:'TGT seguido de múltiplas solicitações TGS para diferentes serviços (coleta de hashes) e eventual acesso.'
+  },
+  {
+    id:'dcsync',
+    name:'DCSync',
+    color:'#185FA5',
+    mitre:'T1003.006',
+    steps:['4624','4672','4662','4928','4932','4934','4933'],
+    desc:'Logon privilegiado, operação em objeto AD, estabelecimento de contexto de replicação e dump de atributos (credenciais).'
+  },
+  {
+    id:'persistence-task',
+    name:'Persistência via Task',
+    color:'#0F6E56',
+    mitre:'T1053',
+    steps:['4624','4688','4698','4700','4702','4688'],
+    desc:'Após acesso, processo cria tarefa agendada, habilita e atualiza para execução persistente.'
+  },
+  {
+    id:'cover-tracks',
+    name:'Cobertura de Rastros',
+    color:'#5F5E5A',
+    mitre:'T1070',
+    steps:['4688','4719','1102','104'],
+    desc:'Processo altera política de auditoria para desabilitar logging e em seguida limpa os logs de segurança e sistema.'
+  },
+  {
+    id:'ransomware-obj',
+    name:'Ransomware – Objetos',
+    color:'#A32D2D',
+    mitre:'T1486',
+    steps:['4624','4688','4656','4663','4670','4660','4719','1102'],
+    desc:'Após acesso, processo abre handles em massa, acessa e modifica permissões de objetos, deleta-os e cobre rastros.'
+  },
+];
+
+// ══════════════════════════════════════════════════════════════════
+// RENDER SCENARIOS BAR
+// ══════════════════════════════════════════════════════════════════
+function renderScenarioBar(){
+  const container = document.getElementById('scenario-btns');
+  container.innerHTML = '';
+  SCENARIOS.forEach(sc=>{
+    const btn = document.createElement('button');
+    btn.className = 'scenario-btn';
+    btn.id = 'sc-'+sc.id;
+    btn.textContent = sc.name;
+    btn.style.setProperty('--sc-color', sc.color);
+    btn.onclick = ()=> toggleScenario(sc.id);
+    container.appendChild(btn);
+  });
+}
+
+function toggleScenario(id){
+  if(activeScenario===id){ clearScenario(); return; }
+  activeScenario=id;
+  // UI state
+  document.querySelectorAll('.scenario-btn').forEach(b=>b.classList.remove('active'));
+  const sc = SCENARIOS.find(s=>s.id===id);
+  const btn = document.getElementById('sc-'+id);
+  btn.classList.add('active');
+  btn.style.background=sc.color;
+  document.getElementById('scenario-clear').style.display='';
+  // clear other filters
+  clearSearchSilent();
+  mitreFilter='';
+  document.getElementById('mitre-filter').value='';
+  document.getElementById('mitre-filter').classList.remove('has-filter');
+  selectedNode=null;
+  closeDetailSilent();
+  applyScenarioHighlight(sc);
+  drawCrossArrows();
+}
+
+function clearScenario(){
+  activeScenario=null;
+  document.querySelectorAll('.scenario-btn').forEach(b=>{
+    b.classList.remove('active');
+    b.style.background='';
+  });
+  document.getElementById('scenario-clear').style.display='none';
+  // remove step badges
+  document.querySelectorAll('.node-step').forEach(el=>el.remove());
+  document.querySelectorAll('.node-box').forEach(b=>{
+    b.classList.remove('highlighted','dimmed','selected');
+    b.style.outline='';
+  });
+  drawCrossArrows();
+}
+
+function applyScenarioHighlight(sc){
+  // remove old badges
+  document.querySelectorAll('.node-step').forEach(el=>el.remove());
+  const stepSet = new Set(sc.steps);
+  document.querySelectorAll('.node-box').forEach(b=>{
+    const eid=b.id.replace('node-','');
+    b.classList.remove('highlighted','dimmed','selected');
+    if(stepSet.has(eid)){
+      b.classList.add('highlighted');
+    } else {
+      b.classList.add('dimmed');
+    }
+  });
+  // add numbered badges in order (deduplicated display)
+  const seen={};
+  sc.steps.forEach((eid,idx)=>{
+    if(seen[eid]) return;
+    seen[eid]=true;
+    const box = document.getElementById('node-'+eid);
+    if(!box) return;
+    const badge = document.createElement('div');
+    badge.className='node-step';
+    badge.textContent=idx+1;
+    badge.style.background=sc.color;
+    box.style.position='relative';
+    box.appendChild(badge);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MITRE FILTER
+// ══════════════════════════════════════════════════════════════════
+function buildMitreSelect(){
+  const sel = document.getElementById('mitre-filter');
+  const techniques = new Set();
+  LAYERS.forEach(l=>l.events.forEach(ev=>{
+    if(ev.mitre){
+      // extract technique code only
+      const match = ev.mitre.match(/T[\d.]+/);
+      if(match) techniques.add(ev.mitre.trim());
+    }
+  }));
+  [...techniques].sort().forEach(t=>{
+    const opt = document.createElement('option');
+    opt.value=t;
+    opt.textContent=t;
+    sel.appendChild(opt);
+  });
+}
+
+function applyMitreFilter(val){
+  mitreFilter=val;
+  const sel=document.getElementById('mitre-filter');
+  sel.classList.toggle('has-filter',!!val);
+  if(val){
+    clearScenario();
+    selectedNode=null;
+    closeDetailSilent();
+  }
+  document.querySelectorAll('.node-box').forEach(box=>{
+    const eid=box.id.replace('node-','');
+    const ev=evtMap[eid];
+    if(!ev) return;
+    if(!val){
+      box.classList.remove('highlighted','dimmed');
+      box.style.opacity='';
+      box.style.pointerEvents='';
+      return;
+    }
+    const match = ev.mitre && ev.mitre.includes(val.match(/T[\d.]+/)?.[0]||'__');
+    box.classList.remove('highlighted','dimmed','selected');
+    if(match) box.classList.add('highlighted');
+    else box.classList.add('dimmed');
+  });
+  drawCrossArrows();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// SVG CROSS-LAYER ARROWS
+// ══════════════════════════════════════════════════════════════════
+function getNodeCenter(eid){
+  const box = document.getElementById('node-'+eid);
+  if(!box) return null;
+  const wrap = document.getElementById('canvas-wrap');
+  const wRect = wrap.getBoundingClientRect();
+  const bRect = box.getBoundingClientRect();
+  const scrollLeft = wrap.scrollLeft;
+  const scrollTop = wrap.scrollTop;
+  // account for zoom
+  const inner = document.getElementById('canvas-inner');
+  const iRect = inner.getBoundingClientRect();
+  const scaleX = zoomLevel;
+  const scaleY = zoomLevel;
+  // position relative to canvas-wrap (with scroll)
+  const x = (bRect.left - wRect.left + scrollLeft) / scaleX * scaleX + (bRect.width/2);
+  const y = (bRect.top - wRect.top + scrollTop) / scaleY * scaleY + (bRect.height/2);
+  return {x: bRect.left - wRect.left + scrollLeft + bRect.width/2,
+          y: bRect.top  - wRect.top  + scrollTop  + bRect.height/2,
+          w: bRect.width, h: bRect.height};
+}
+
+function drawCrossArrows(){
+  const svg = document.getElementById('svg-overlay');
+  // clear existing paths (keep defs)
+  svg.querySelectorAll('path,line').forEach(el=>el.remove());
+
+  const wrap = document.getElementById('canvas-wrap');
+  svg.setAttribute('width', wrap.scrollWidth);
+  svg.setAttribute('height', wrap.scrollHeight);
+
+  // Collect cross-layer edges to draw
+  const edges = [];
+  LAYERS.forEach(layer=>{
+    layer.events.forEach(ev=>{
+      (ev.succs||[]).forEach(sid=>{
+        const target=evtMap[sid];
+        if(!target) return;
+        if(target.layer === layer.id) return; // same layer — skip
+        edges.push({from:ev.id, to:sid, fromLayer:layer.id, toLayer:target.layer});
+      });
+    });
+  });
+
+  // Determine active scenario steps for coloring
+  const scenarioEdgeSet = new Set();
+  if(activeScenario){
+    const sc=SCENARIOS.find(s=>s.id===activeScenario);
+    if(sc){
+      for(let i=0;i<sc.steps.length-1;i++){
+        scenarioEdgeSet.add(sc.steps[i]+'>'+sc.steps[i+1]);
+      }
+    }
+  }
+
+  edges.forEach(edge=>{
+    const from = getNodeCenter(edge.from);
+    const to   = getNodeCenter(edge.to);
+    if(!from||!to) return;
+
+    const fromBox = document.getElementById('node-'+edge.from);
+    const toBox   = document.getElementById('node-'+edge.to);
+    if(!fromBox||!toBox) return;
+
+    // Determine color from source layer
+    const layerColor = evtMap[edge.from]?.layerColor || '#888';
+
+    // Determine state
+    const isScenario = scenarioEdgeSet.has(edge.from+'>'+edge.to);
+    const fromDimmed = fromBox.classList.contains('dimmed');
+    const toDimmed   = toBox.classList.contains('dimmed');
+    const anyActive  = activeScenario || mitreFilter;
+
+    let cls = '';
+    let opacity = 0.4;
+    let strokeColor = layerColor;
+    let strokeW = 1.8;
+
+    if(isScenario){
+      cls='cross-scenario'; opacity=0.9; strokeW=2.8;
+    } else if(anyActive && (fromDimmed||toDimmed)){
+      cls='cross-dimmed'; opacity=0.05; strokeW=1.2;
+    } else if(!anyActive){
+      opacity=0.35; strokeW=1.5;
+    } else {
+      opacity=0.5;
+    }
+
+    // Draw cubic bezier: start from bottom of source, end at top of dest
+    const x1=from.x, y1=from.y+(from.h/2);
+    const x2=to.x,   y2=to.y-(to.h/2);
+    const cy = (y1+y2)/2;
+    const d=`M${x1},${y1} C${x1},${cy} ${x2},${cy} ${x2},${y2}`;
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d',d);
+    path.setAttribute('stroke',strokeColor);
+    path.setAttribute('stroke-width',strokeW);
+    path.setAttribute('fill','none');
+    path.setAttribute('opacity',opacity);
+    path.setAttribute('stroke-dasharray', isScenario?'none':'5,3');
+    // arrowhead via marker
+    path.setAttribute('marker-end',`url(#arrowhead-${edge.from})`);
+    if(cls) path.classList.add(cls);
+    svg.appendChild(path);
+
+    // small arrowhead at destination
+    const aw=8, ah=6;
+    const arrow = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    arrow.setAttribute('points',`${x2-aw/2},${y2} ${x2+aw/2},${y2} ${x2},${y2+ah}`);
+    arrow.setAttribute('fill',strokeColor);
+    arrow.setAttribute('opacity',opacity);
+    svg.appendChild(arrow);
+  });
+}
+
+// Redraw arrows on scroll and resize
+document.getElementById('canvas-wrap').addEventListener('scroll',()=>requestAnimationFrame(drawCrossArrows));
+window.addEventListener('resize',()=>requestAnimationFrame(drawCrossArrows));
+
+function closeDetailSilent(){
+  document.getElementById('detail-panel').classList.add('hidden');
+}
+
+function clearSearchSilent(){
+  searchFilter='';
+  document.getElementById('search').value='';
+  document.querySelectorAll('.node-box').forEach(b=>{
+    b.style.opacity='';b.style.pointerEvents='';
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// COLOR HELPERS
+// ══════════════════════════════════════════════════════════════════
+function critColor(c){
+  if(c.includes('High'))   return {bg:'#A32D2D',text:'#fff'};
+  if(c.includes('Medium')) return {bg:'#854F0B',text:'#fff'};
+  return {bg:'#3B6D11',text:'#fff'};
+}
+function critBadge(c){
+  const m = c.includes('High')?'badge-high':c.includes('Medium')?'badge-medium':'badge-low';
+  return `<span class="badge ${m}">${c}</span>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// RENDER LAYER NAV
+// ══════════════════════════════════════════════════════════════════
+function renderLayerNav(){
+  const nav = document.getElementById('layer-nav');
+  nav.innerHTML='';
+  LAYERS.forEach((l,i)=>{
+    const btn = document.createElement('button');
+    btn.className='layer-btn'+(i===0?' active':'');
+    btn.setAttribute('data-layer',l.id);
+    btn.innerHTML=`<span class="layer-bar" style="background:${l.color}"></span>${l.name}`;
+    btn.onclick=()=>{
+      document.querySelectorAll('.layer-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const sec=document.getElementById('sec-'+l.id);
+      if(sec) sec.scrollIntoView({behavior:'smooth',block:'start'});
+    };
+    nav.appendChild(btn);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// RENDER GRAPH
+// ══════════════════════════════════════════════════════════════════
+function renderGraph(){
+  const inner = document.getElementById('canvas-inner');
+  inner.innerHTML='';
+
+  LAYERS.forEach(layer=>{
+    const section = document.createElement('div');
+    section.className='layer-section';
+    section.id='sec-'+layer.id;
+
+    // layer label
+    const lbl = document.createElement('div');
+    lbl.className='layer-label';
+    lbl.innerHTML=`<span style="color:${layer.color};font-weight:600">${layer.name}</span><div class="layer-label-bar" style="background:${layer.color}"></div><span style="font-size:9px">${layer.desc}</span>`;
+    section.appendChild(lbl);
+
+    // events row
+    const row = document.createElement('div');
+    row.className='layer-row';
+
+    layer.events.forEach((ev,i)=>{
+      const col = critColor(ev.crit);
+      const nodeWrap = document.createElement('div');
+      nodeWrap.className='node-wrap';
+
+      const node = document.createElement('div');
+      node.className='node';
+
+      const box = document.createElement('div');
+      box.className='node-box';
+      box.id='node-'+ev.id;
+      box.style.cssText=`background:${col.bg};color:${col.text};`;
+      box.innerHTML=`<span class="node-eid">${ev.id}</span><span class="node-short">${ev.short}</span>`;
+      box.onclick=()=>selectNode(ev.id);
+      box.title=ev.desc;
+
+      const lbl2 = document.createElement('div');
+      lbl2.className='node-label';
+      // show vertical arrows for successors that are in NEXT layer
+      const nextLayerSuccs = (ev.succs||[]).filter(sid=>{
+        const target=evtMap[sid];
+        return target && target.layer !== layer.id;
+      });
+      if(nextLayerSuccs.length>0){
+        lbl2.innerHTML=`<span class="arrow-v">↓</span>`;
+      }
+
+      node.appendChild(box);
+      node.appendChild(lbl2);
+      nodeWrap.appendChild(node);
+
+      // horizontal arrow (not after last)
+      if(i < layer.events.length-1){
+        // check if this event has a successor in the SAME layer
+        const sameLayerSucc = (ev.succs||[]).some(sid=>evtMap[sid]&&evtMap[sid].layer===layer.id);
+        const arrowDiv = document.createElement('div');
+        arrowDiv.className='arrow-h';
+        arrowDiv.innerHTML = sameLayerSucc ? '→' : '<span style="opacity:0.2">·</span>';
+        nodeWrap.appendChild(arrowDiv);
+      }
+
+      row.appendChild(nodeWrap);
+    });
+
+    section.appendChild(row);
+    inner.appendChild(section);
+  });
+
+  applyFilter();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// SELECT NODE
+// ══════════════════════════════════════════════════════════════════
+function selectNode(eid){
+  if(selectedNode===eid){ closeDetail(); return; }
+  selectedNode=eid;
+  updateNodeStyles();
+  showDetail(eid);
+}
+
+function updateNodeStyles(){
+  const allBoxes = document.querySelectorAll('.node-box');
+  if(!selectedNode){
+    allBoxes.forEach(b=>{ b.classList.remove('highlighted','dimmed','selected'); });
+    drawCrossArrows();
+    return;
+  }
+  const ev = evtMap[selectedNode];
+  const related = new Set([selectedNode,...(ev.succs||[]),...(predMap[selectedNode]||[])]);
+  allBoxes.forEach(b=>{
+    const bid = b.id.replace('node-','');
+    b.classList.remove('highlighted','dimmed','selected');
+    if(bid===selectedNode) b.classList.add('selected');
+    else if(related.has(bid)) b.classList.add('highlighted');
+    else b.classList.add('dimmed');
+  });
+  drawCrossArrows();
+}
+
+function closeDetail(){
+  selectedNode=null;
+  updateNodeStyles();
+  document.getElementById('detail-panel').classList.add('hidden');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// DETAIL PANEL
+// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════
+// TIMING DATA
+// Formato: { from-to : { label, cls, note, anomaly } }
+// cls: t-instant | t-seconds | t-minutes | t-variable | t-triggered
+// ══════════════════════════════════════════════════════════════════
+const TIMING = {
+  // CAMADA 1 — Sistema
+  '12-6005':   {label:'< 100 ms',  cls:'t-instant',  note:'Kernel inicia o serviço de log imediatamente após registrar o boot.',                                   anomaly:'Intervalo > 5s indica problema no serviço de log ou inicialização lenta.'},
+  '12-4608':   {label:'< 500 ms',  cls:'t-instant',  note:'Windows Starting é gerado pela LSA logo após o kernel registrar o boot.',                               anomaly:''},
+  '6005-4608': {label:'< 200 ms',  cls:'t-instant',  note:'Praticamente simultâneos — fazem parte da mesma sequência de inicialização.',                          anomaly:''},
+  '4608-4610': {label:'< 1 s',     cls:'t-instant',  note:'Pacotes de autenticação são carregados imediatamente durante a inicialização da LSA.',                  anomaly:''},
+  '4610-4611': {label:'< 500 ms',  cls:'t-instant',  note:'Processo de logon registrado logo após os pacotes de autenticação.',                                    anomaly:''},
+  '4611-4614': {label:'< 500 ms',  cls:'t-instant',  note:'Pacote de notificação do SAM carregado na sequência de inicialização.',                                 anomaly:''},
+  '4614-4622': {label:'< 500 ms',  cls:'t-instant',  note:'Pacotes de segurança adicionais carregados logo após o SAM.',                                           anomaly:''},
+  '13-6006':   {label:'< 200 ms',  cls:'t-instant',  note:'Kernel registra shutdown e o serviço de log encerra imediatamente.',                                    anomaly:''},
+  '6006-4609': {label:'< 200 ms',  cls:'t-instant',  note:'Windows Shutting Down gerado imediatamente após o serviço de log encerrar.',                            anomaly:''},
+  '1074-4609': {label:'< 5 s',     cls:'t-seconds',  note:'Após o usuário ou processo solicitar shutdown, o SO registra o encerramento em poucos segundos.',       anomaly:''},
+  '41-6008':   {label:'No reboot', cls:'t-instant',  note:'6008 é gerado no próximo boot, não imediatamente após o crash.',                                        anomaly:'Presença de 6008 sem 41 anterior pode indicar manipulação de log.'},
+
+  // CAMADA 2 — Autenticação
+  '4625-4624': {label:'Variável',  cls:'t-variable', note:'Depende do comportamento: brute force pode ter ms entre tentativas; usuário legítimo pode levar minutos.', anomaly:'5+ falhas em < 60s da mesma origem seguidas de sucesso = forte indicador de brute force.'},
+  '4625-4740': {label:'< 1 s',     cls:'t-instant',  note:'O bloqueio é aplicado imediatamente após atingir o threshold de falhas configurado na política.',        anomaly:''},
+  '4740-4767': {label:'Variável',  cls:'t-variable', note:'Depende de intervenção humana (helpdesk) ou processo automatizado. Pode ser segundos ou horas.',         anomaly:'Desbloqueio imediato (< 30s) sem ticket é suspeito — pode indicar automação maliciosa.'},
+  '4767-4624': {label:'< 30 s',    cls:'t-seconds',  note:'Após desbloqueio, o usuário normalmente tenta autenticar em seguida.',                                   anomaly:'Logon de origem diferente da que gerou os 4625 é suspeito.'},
+  '4768-4769': {label:'1 – 5 s',   cls:'t-seconds',  note:'TGS solicitado logo após o TGT — tempo de o sistema resolver o serviço de destino.',                    anomaly:'4769 sem 4768 precedente indica ticket forjado (Golden Ticket).'},
+  '4769-4770': {label:'Variável',  cls:'t-variable', note:'Renovação ocorre quando o ticket está próximo do vencimento. Padrão depende do Kerberos MaxTicketAge.',  anomaly:'Múltiplos 4769 de serviços diferentes em < 10s de uma única conta = Kerberoasting.'},
+  '4771-4768': {label:'Variável',  cls:'t-variable', note:'Após falha de pré-autenticação, nova tentativa depende do cliente.',                                     anomaly:''},
+  '4776-4624': {label:'< 1 s',     cls:'t-instant',  note:'Validação NTLM e concessão de acesso ocorrem na mesma transação.',                                       anomaly:'Muitos 4776 sem 4624 correspondente indica tentativas NTLM falhando silenciosamente.'},
+  '4624-4634': {label:'Variável',  cls:'t-variable', note:'Duração da sessão — pode ser segundos (serviço) ou horas (usuário interativo).',                        anomaly:'Sessão com duração < 5s seguida de 4672 é suspeita — pode ser logon de reconhecimento.'},
+  '4634-4647': {label:'< 1 s',     cls:'t-instant',  note:'4647 (iniciado pelo usuário) precede 4634 (confirmação do sistema) imediatamente.',                     anomaly:''},
+
+  // CAMADA 3 — Autorização & Sessão
+  '4624-4672': {label:'< 1 s',     cls:'t-instant',  note:'Privilégios especiais são atribuídos na mesma transação de logon quando a conta os possui.',             anomaly:'4672 com delay > 5s após 4624 é anômalo — privilégios não deveriam ser concedidos depois do logon.'},
+  '4624-4778': {label:'< 2 s',     cls:'t-instant',  note:'Reconexão de sessão RDP ocorre imediatamente após autenticação bem-sucedida.',                          anomaly:'4778 sem 4624 precedente indica reconexão de sessão órfã.'},
+  '4778-4779': {label:'Variável',  cls:'t-variable', note:'Tempo de sessão ativa antes da desconexão.',                                                             anomaly:''},
+  '4800-4801': {label:'Variável',  cls:'t-variable', note:'Depende de quanto tempo o usuário ficou ausente.',                                                       anomaly:'4801 de origem de rede diferente da sessão original indica acesso não autorizado à estação bloqueada.'},
+  '4802-4800': {label:'< 2 s',     cls:'t-instant',  note:'Screensaver ativado e estação bloqueada são praticamente simultâneos.',                                  anomaly:''},
+
+  // CAMADA 4 — Identidade & Grupos
+  '4720-4722': {label:'< 5 s',     cls:'t-seconds',  note:'Em processos automatizados (scripts de provisionamento), habilitação ocorre logo após a criação.',       anomaly:'4720 sem 4722 subsequente pode indicar conta criada e mantida desabilitada intencionalmente.'},
+  '4720-4728': {label:'< 30 s',    cls:'t-seconds',  note:'Em provisionamento automatizado, adição ao grupo ocorre logo após criação e habilitação.',               anomaly:'4720 → 4728 (Domain Admins) em < 60s fora do horário comercial sem change request é crítico.'},
+  '4722-4624': {label:'Variável',  cls:'t-variable', note:'Após habilitação, logon pode ocorrer imediatamente ou após tempo indeterminado.',                        anomaly:'Logon < 30s após 4722 por conta recem-criada indica conta backdoor sendo usada imediatamente.'},
+  '4724-4624': {label:'< 60 s',    cls:'t-minutes',  note:'Após reset de senha, o usuário normalmente tenta autenticar em seguida.',                               anomaly:'Reset seguido de logon de IP diferente do solicitante indica comprometimento do fluxo de reset.'},
+  '4727-4728': {label:'< 5 s',     cls:'t-seconds',  note:'Criação de grupo e adição do primeiro membro costumam ocorrer na mesma operação de script.',             anomaly:''},
+  '4731-4732': {label:'< 5 s',     cls:'t-seconds',  note:'Igual ao global — criação e adição do primeiro membro na mesma operação.',                              anomaly:''},
+
+  // CAMADA 5 — Processos & Serviços
+  '4672-4688': {label:'1 – 10 s',  cls:'t-seconds',  note:'Após logon privilegiado, processos são iniciados em poucos segundos (shell, explorer, etc.).',           anomaly:'4688 gerando processo de shell (cmd/powershell) < 2s após 4672 de conta de serviço é suspeito.'},
+  '4688-4689': {label:'Variável',  cls:'t-variable', note:'Duração do processo — pode ser ms (comando rápido) ou horas (serviço contínuo).',                       anomaly:'Processo com duração < 1s que gera muitos 4663 antes de encerrar indica varredura automatizada.'},
+  '4697-7045': {label:'< 1 s',     cls:'t-instant',  note:'4697 (Security log) e 7045 (System log) são gerados simultaneamente pelo mesmo evento.',                anomaly:'7045 sem 4697 correspondente indica que a auditoria de segurança pode estar desabilitada.'},
+  '7045-7036': {label:'< 5 s',     cls:'t-seconds',  note:'Serviço instalado e iniciado na sequência imediata em instalações automáticas.',                        anomaly:'7045 com nome aleatório (< 8 chars) ou caminho em %TEMP% é forte indicador de PSExec ou similar.'},
+  '7036-4688': {label:'< 2 s',     cls:'t-instant',  note:'Processo do serviço é criado imediatamente após o serviço entrar em estado running.',                   anomaly:''},
+  '4698-4700': {label:'< 2 s',     cls:'t-instant',  note:'Task criada e habilitada na mesma operação em scripts de persistência.',                                anomaly:'4698 com trigger imediato (< 60s) e caminho em diretório temporário é persistência maliciosa.'},
+  '4698-4688': {label:'Depende do trigger', cls:'t-triggered', note:'Execução ocorre apenas quando o trigger configurado disparar (horário, evento, boot, etc.).',  anomaly:''},
+  '4700-4688': {label:'Depende do trigger', cls:'t-triggered', note:'Processo executado quando o trigger da task disparar.',                                        anomaly:''},
+  '4702-4688': {label:'Depende do trigger', cls:'t-triggered', note:'Após atualização da task, execução segue o novo trigger.',                                    anomaly:''},
+
+  // CAMADA 6 — Objetos & Política
+  '4656-4663': {label:'< 100 ms',  cls:'t-instant',  note:'Handle aberto e acesso ao objeto ocorrem na mesma operação.',                                           anomaly:''},
+  '4663-4670': {label:'< 100 ms',  cls:'t-instant',  note:'Modificação de permissão ocorre imediatamente após acesso ao objeto.',                                  anomaly:'4670 em massa em múltiplos objetos em < 60s indica alteração de permissões em lote — comum em ransomware.'},
+  '4656-4660': {label:'< 1 s',     cls:'t-instant',  note:'Deleção de objeto ocorre imediatamente após abertura do handle com intent to delete.',                  anomaly:''},
+  '4661-4662': {label:'< 100 ms',  cls:'t-instant',  note:'Handle de objeto AD aberto e operação realizada na mesma transação.',                                   anomaly:''},
+  '4662-4932': {label:'< 5 s',     cls:'t-seconds',  note:'Operação de replicação AD inicia logo após o estabelecimento do contexto de nomenclatura.',             anomaly:'4662 com GUID de replicação originando de host não-DC seguido de 4932 = DCSync.'},
+  '4719-1102': {label:'< 60 s',    cls:'t-minutes',  note:'Atacante altera política de auditoria para desabilitar antes de limpar o log.',                         anomaly:'4719 seguido de 1102 em < 5 minutos é sequência clássica de cobertura de rastros.'},
+
+  // CAMADA 7 — Auditoria & Rede
+  '4928-4932': {label:'< 10 s',    cls:'t-seconds',  note:'Sincronização começa logo após o estabelecimento do contexto de nomenclatura.',                         anomaly:'4928+4932 originando de workstation (não DC) = DCSync em progresso.'},
+  '4932-4933': {label:'Variável',  cls:'t-variable', note:'Duração da sincronização depende do volume de dados replicados.',                                        anomaly:'Replicação muito curta (< 1s) de workstation pode indicar dump seletivo de atributos (ex: unicodePwd).'},
+  '4932-4934': {label:'< 1 s',     cls:'t-instant',  note:'Atributos são replicados imediatamente durante a sincronização.',                                        anomaly:''},
+  '4935-4936': {label:'Variável',  cls:'t-variable', note:'Falha de replicação pode durar segundos ou persistir até intervenção.',                                  anomaly:''},
+  '4946-4688': {label:'Variável',  cls:'t-variable', note:'Após criar regra de firewall permissiva, processo de C2 pode conectar em qualquer momento.',            anomaly:'4946 adicionando regra Allow para porta não padrão seguido de 4688 com processo de rede é suspeito.'},
+  '4948-4946': {label:'< 30 s',    cls:'t-seconds',  note:'Sequência de remover regra de bloqueio e adicionar regra permissiva é operação comum em configuração.',  anomaly:'Essa sequência em < 10s fora de janela de mudanças indica modificação não autorizada de firewall.'},
+};
+
+function getTimingClass(cls){
+  const labels={
+    't-instant':'Instantâneo',
+    't-seconds':'Segundos',
+    't-minutes':'Minutos',
+    't-variable':'Variável',
+    't-triggered':'Por trigger'
+  };
+  return labels[cls]||cls;
+}
+
+function showDetail(eid){
+  const ev = evtMap[eid];
+  if(!ev) return;
+  const col = critColor(ev.crit);
+  document.getElementById('detail-panel').classList.remove('hidden');
+  document.getElementById('d-eid').textContent='Event ID '+eid;
+  document.getElementById('d-eid').style.color=col.bg;
+  document.getElementById('d-desc').textContent=ev.desc;
+  document.getElementById('d-crit').innerHTML=critBadge(ev.crit)+(ev.mitre?`<span class="badge badge-info" style="margin-left:4px">${ev.mitre}</span>`:'');
+  document.getElementById('d-log').textContent=ev.log;
+  document.getElementById('d-legacy').textContent=ev.legacy||'N/A';
+  document.getElementById('d-mitre').innerHTML=ev.mitre?`<a href="https://attack.mitre.org/techniques/${ev.mitre.match(/T[\d.]+/)?.[0]||''}" target="_blank" style="color:var(--blue)">${ev.mitre}</a>`:'—';
+
+  // TIMING — gather entries where this event is source OR destination
+  const timingEntries=[];
+  const succs=(ev.succs||[]).filter(s=>evtMap[s]);
+  const preds=(predMap[eid]||[]).filter(s=>evtMap[s]);
+
+  // successors: from eid → succ
+  succs.forEach(s=>{
+    const key=`${eid}-${s}`;
+    const t=TIMING[key];
+    if(t) timingEntries.push({dir:'→',otherId:s,otherShort:evtMap[s].short,...t});
+  });
+  // predecessors: from pred → eid
+  preds.forEach(p=>{
+    const key=`${p}-${eid}`;
+    const t=TIMING[key];
+    if(t) timingEntries.push({dir:'←',otherId:p,otherShort:evtMap[p].short,...t});
+  });
+
+  const timingLbl=document.getElementById('d-timing-lbl');
+  const timingList=document.getElementById('d-timing');
+  timingLbl.style.display=timingEntries.length?'block':'none';
+  timingList.innerHTML=timingEntries.map(t=>`
+    <div class="timing-item" onclick="selectNode('${t.otherId}')">
+      <div class="timing-header">
+        <span class="timing-eid">${t.dir==='→'?eid:t.otherId} ${t.dir} ${t.dir==='→'?t.otherId:eid}</span>
+        <span class="timing-badge ${t.cls}">${t.label}</span>
+      </div>
+      <div class="timing-note">${t.note}</div>
+      ${t.anomaly?`<div class="timing-anomaly">⚠ ${t.anomaly}</div>`:''}
+    </div>
+  `).join('');
+
+  const succLbl=document.getElementById('d-succ-lbl');
+  const succList=document.getElementById('d-successors');
+  succLbl.style.display=succs.length?'block':'none';
+  succList.innerHTML=succs.map(s=>`<div class="related-item" onclick="selectNode('${s}')"><span class="related-eid">${s}</span> ${evtMap[s].short}</div>`).join('');
+
+  const predLbl=document.getElementById('d-pred-lbl');
+  const predList=document.getElementById('d-predecessors');
+  predLbl.style.display=preds.length?'block':'none';
+  predList.innerHTML=preds.map(p=>`<div class="related-item" onclick="selectNode('${p}')"><span class="related-eid">${p}</span> ${evtMap[p].short}</div>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// SEARCH & FILTER
+// ══════════════════════════════════════════════════════════════════
+function doSearch(v){
+  searchFilter=v.toLowerCase();
+  if(searchFilter){
+    clearScenario();
+    mitreFilter='';
+    document.getElementById('mitre-filter').value='';
+    document.getElementById('mitre-filter').classList.remove('has-filter');
+    document.querySelectorAll('.node-box').forEach(b=>b.classList.remove('highlighted','dimmed','selected'));
+  }
+  applyFilter();
+}
+function clearSearch(){
+  document.getElementById('search').value='';
+  searchFilter='';
+  applyFilter();
+}
+function applyFilter(){
+  document.querySelectorAll('.node-box').forEach(box=>{
+    const eid=box.id.replace('node-','');
+    const ev=evtMap[eid];
+    if(!ev) return;
+    if(!searchFilter){
+      box.style.opacity='';
+      box.style.pointerEvents='';
+      return;
+    }
+    const match = eid.includes(searchFilter)||ev.desc.toLowerCase().includes(searchFilter)||ev.short.toLowerCase().includes(searchFilter)||(ev.mitre&&ev.mitre.toLowerCase().includes(searchFilter));
+    box.style.opacity=match?'1':'0.1';
+    box.style.pointerEvents=match?'':'none';
+  });
+  requestAnimationFrame(drawCrossArrows);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ZOOM
+// ══════════════════════════════════════════════════════════════════
+function zoom(delta){
+  zoomLevel=Math.max(0.4,Math.min(2.0,zoomLevel+delta));
+  document.getElementById('canvas-inner').style.transform=`scale(${zoomLevel})`;
+  setTimeout(drawCrossArrows,160);
+}
+function resetZoom(){ zoomLevel=1; document.getElementById('canvas-inner').style.transform='scale(1)'; setTimeout(drawCrossArrows,160); }
+
+function toggleHighlightMode(){
+  highlightMode=!highlightMode;
+  document.getElementById('btn-highlight').classList.toggle('active',highlightMode);
+  document.getElementById('btn-highlight').textContent=highlightMode?'Modo: Realçar':'Modo: Selecionar';
+}
+
+// ══════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════
+renderLayerNav();
+renderScenarioBar();
+buildMitreSelect();
+renderGraph();
+// draw cross-layer arrows after layout settles
+setTimeout(()=>drawCrossArrows(), 150);
+</script>
+</body>
+<div style="
+  position:fixed; bottom:0; left:0; right:0;
+  background:var(--bg); border-top:0.5px solid var(--border2);
+  padding:6px 1rem; font-size:11px; color:var(--text3);
+  display:flex; align-items:center; gap:1rem; z-index:100;
+">
+  <span>Criado por <strong style="color:var(--text)">_rəSH_</strong></span>
+  <a href="https://www.linkedin.com/in/alayne-borges/" target="_blank" style="color:var(--blue)">LinkedIn</a>
+  <a href="https://github.com/w0m73" target="_blank" style="color:var(--blue)">GitHub</a>
+  <a href="https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/appendix-l--events-to-monitor" target="_blank" style="color:var(--blue)">Fonte</a>
+
+</div>
+</html>
