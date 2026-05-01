@@ -1165,5 +1165,25 @@ renderGraph();
 // draw cross-layer arrows after layout settles
 setTimeout(()=>drawCrossArrows(), 150);
 </script>
+<script>
+document.getElementById('canvas-inner').insertAdjacentHTML('beforeend', `
+  <div style="
+    margin-top:2rem;
+    padding:0.75rem 1rem;
+    border-top:0.5px solid var(--border2);
+    font-size:11px;
+    color:var(--text3);
+    display:flex;
+    align-items:center;
+    gap:1rem;
+    flex-wrap:wrap;
+  ">
+    <span>Criado por <strong style="color:var(--text)">_rəSH_</strong></span>
+    <a href="https://www.linkedin.com/in/alayne-borges/" target="_blank" style="color:var(--blue);text-decoration:none;">LinkedIn</a>
+    <a href="https://github.com/w0m73" target="_blank" style="color:var(--blue);text-decoration:none;">GitHub</a>
+    <a href="https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/appendix-l--events-to-monitor" target="_blank" style="color:var(--blue);text-decoration:none;">Fonte</a>
+  </div>
+`);
+</script>
 </body>
 </html>
