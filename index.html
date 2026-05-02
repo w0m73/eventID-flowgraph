@@ -300,6 +300,7 @@ const LAYERS = [
       {id:"4822", short:"NTLM ProtUser", desc:"Autenticação NTLM falhou – conta no grupo Protected User",   crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
       {id:"4823", short:"NTLM ACL",      desc:"Autenticação NTLM falhou – restrições de controle de acesso",crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
       {id:"4824", short:"Kerb DES Fail", desc:"Pré-autenticação Kerberos via DES/RC4 falhou (Protected User)",crit:"Low", log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
+      {id:"4618", short:"Event Pattern",  desc:"Um padrão de evento de segurança monitorado ocorreu",           crit:"High", log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
     ]
   },
   {
@@ -360,6 +361,10 @@ const LAYERS = [
       {id:"4741", short:"Comp Acct+",    desc:"Uma conta de computador foi criada",                       crit:"Low",  log:"Security",legacy:"N/A",          mitre:"T1136 – Create Account", succs:["4742"]},
       {id:"4742", short:"Comp Acct Chg", desc:"Uma conta de computador foi alterada",                    crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
       {id:"4743", short:"Comp Acct-",    desc:"Uma conta de computador foi deletada",                    crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"4739", short:"Domain Policy", desc:"Política de domínio foi alterada",                          crit:"Medium",log:"Security",legacy:"643",         mitre:"",                      succs:[]},
+      {id:"4713", short:"Kerb Policy",   desc:"Política Kerberos foi alterada",                            crit:"Medium",log:"Security",legacy:"617",         mitre:"T1558 – Kerberos",      succs:[]},
+      {id:"4714", short:"EFS Policy",    desc:"Política de recuperação de dados criptografados foi alterada",crit:"Medium",log:"Security",legacy:"618",       mitre:"",                      succs:[]},
+      {id:"4675", short:"SIDs Filtered", desc:"SIDs foram filtrados durante autenticação cross-domain",    crit:"Medium",log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
     ]
   },
   {
@@ -411,12 +416,16 @@ const LAYERS = [
       {id:"4715", short:"SACL Changed",  desc:"A política de auditoria (SACL) em um objeto foi alterada",crit:"Medium",log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
       {id:"4817", short:"Audit Changed", desc:"Configurações de auditoria em objeto foram alteradas",     crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
       {id:"4907", short:"Audit Settings",desc:"Configurações de auditoria em objeto foram alteradas",     crit:"Medium",log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
-      {id:"4719", short:"Audit Policy",  desc:"Política de auditoria do sistema foi alterada",            crit:"High", log:"Security",legacy:"612",          mitre:"",                      succs:["1102","104"]},
-      {id:"4739", short:"Domain Policy", desc:"Política de Domínio foi alterada",                         crit:"Medium",log:"Security",legacy:"643",         mitre:"",                      succs:[]},
+      {id:"4719", short:"Audit Policy",  desc:"Política de auditoria do sistema foi alterada",            crit:"High", log:"Security",legacy:"612",          mitre:"T1562 – Impair Def.",   succs:["1102","104"]},
       {id:"6145", short:"GPO Error",     desc:"Erros ao processar política de segurança nos GPOs",        crit:"Medium",log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
       {id:"1030", short:"GPO No Read",   desc:"Configurações de Política de Grupo não puderam ser lidas",crit:"Low",  log:"System",  legacy:"N/A",          mitre:"",                      succs:[]},
       {id:"1058", short:"Sysvol Fail",   desc:"Computador não conseguiu acessar o compartilhamento Sysvol",crit:"Low", log:"System",  legacy:"N/A",         mitre:"",                      succs:[]},
       {id:"1704", short:"GPO Applied",   desc:"GPO aplicado com sucesso ao computador cliente",           crit:"Low",  log:"System",  legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"4692", short:"DPAPI Backup",  desc:"Backup da chave mestre de proteção de dados foi tentado", crit:"Medium",log:"Security",legacy:"N/A",         mitre:"T1555 – Credentials",   succs:[]},
+      {id:"4693", short:"DPAPI Recovery",desc:"Recuperação da chave mestre de proteção de dados tentada",crit:"Medium",log:"Security",legacy:"N/A",         mitre:"T1555 – Credentials",   succs:[]},
+      {id:"4906", short:"AuditFail Chg", desc:"Valor CrashOnAuditFail foi alterado",                     crit:"Medium",log:"Security",legacy:"N/A",         mitre:"T1562 – Impair Def.",   succs:[]},
+      {id:"4908", short:"Spec Grp Table",desc:"Tabela de logon de grupos especiais foi modificada",       crit:"Medium",log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
+      {id:"4912", short:"Per User Audit",desc:"Política de auditoria por usuário foi alterada",           crit:"Medium",log:"Security",legacy:"807",         mitre:"",                      succs:[]},
     ]
   },
   {
@@ -461,6 +470,13 @@ const LAYERS = [
       {id:"4896", short:"CS Rows Del",   desc:"Linhas deletadas do banco de dados de certificados",      crit:"Medium",log:"Security",legacy:"800",           mitre:"",                      succs:[]},
       {id:"4897", short:"CS Role Sep",   desc:"Separação de função habilitada nos Certificate Services", crit:"High", log:"Security",legacy:"801",            mitre:"",                      succs:[]},
       {id:"5124", short:"OCSP Updated",  desc:"Configuração de segurança atualizada no OCSP Responder Service",crit:"High",log:"Security",legacy:"N/A",       mitre:"",                      succs:[]},
+      {id:"4816", short:"RPC Integrity", desc:"RPC detectou violação de integridade ao descriptografar mensagem",crit:"Medium",log:"Security",legacy:"N/A",   mitre:"",                      succs:[]},
+      {id:"4621", short:"AuditFail Rcv", desc:"Administrador recuperou sistema do CrashOnAuditFail",       crit:"Medium",log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
+      {id:"4866", short:"Forest Entry-", desc:"Entrada de informação de floresta confiável foi removida",   crit:"Medium",log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
+      {id:"4867", short:"Forest Entry~", desc:"Entrada de informação de floresta confiável foi modificada", crit:"Medium",log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
+      {id:"4885", short:"CS Audit Filt", desc:"Filtro de auditoria dos Certificate Services foi alterado",  crit:"Medium",log:"Security",legacy:"789",         mitre:"",                      succs:[]},
+      {id:"4890", short:"CS Mgr Sett",  desc:"Configurações do gerenciador de certificados foram alteradas",crit:"Medium",log:"Security",legacy:"794",         mitre:"",                      succs:[]},
+      {id:"4892", short:"CS Prop Chg",  desc:"Uma propriedade dos Certificate Services foi alterada",       crit:"Medium",log:"Security",legacy:"796",         mitre:"",                      succs:[]},
     ]
   },
 ];
@@ -1027,7 +1043,12 @@ const TIMING = {
   '4662-4932': {label:'< 5 s',     cls:'t-seconds',  note:'Operação de replicação AD inicia logo após o estabelecimento do contexto de nomenclatura.',             anomaly:'4662 com GUID de replicação originando de host não-DC seguido de 4932 = DCSync.'},
   '4719-1102': {label:'< 60 s',    cls:'t-minutes',  note:'Atacante altera política de auditoria para desabilitar antes de limpar o log.',                         anomaly:'4719 seguido de 1102 em < 5 minutos é sequência clássica de cobertura de rastros.'},
 
-  // CAMADA 7 — Auditoria & Rede
+  // NOVOS EVENTOS
+  '4719-4906': {label:'< 1 s',     cls:'t-instant',  note:'Mudança na política de auditoria frequentemente acompanha alteração do CrashOnAuditFail para evitar crash.',  anomaly:'Sequência 4719→4906→1102 em < 5 min = supressão deliberada de auditoria.'},
+  '4728-4624': {label:'< 30 s',    cls:'t-seconds',  note:'Adição a grupo privilegiado seguida de logon imediato é padrão de escalonamento rápido.',                      anomaly:'Conta recém-criada adicionada a Domain Admins sem ticket ITSM = alto risco.'},
+  '4732-4624': {label:'< 30 s',    cls:'t-seconds',  note:'Adição a grupo local Administrators seguida de logon local.',                                                   anomaly:'Fora de horário comercial sem aprovação = suspeito.'},
+  '4692-4693': {label:'Variável',  cls:'t-variable', note:'Backup seguido de recovery da chave DPAPI pode indicar extração de credenciais protegidas.',                   anomaly:'Sequência em conta de serviço ou fora de manutenção = possível credential harvesting.'},
+
   '4928-4932': {label:'< 10 s',    cls:'t-seconds',  note:'Sincronização começa logo após o estabelecimento do contexto de nomenclatura.',                         anomaly:'4928+4932 originando de workstation (não DC) = DCSync em progresso.'},
   '4932-4933': {label:'Variável',  cls:'t-variable', note:'Duração da sincronização depende do volume de dados replicados.',                                        anomaly:'Replicação muito curta (< 1s) de workstation pode indicar dump seletivo de atributos (ex: unicodePwd).'},
   '4932-4934': {label:'< 1 s',     cls:'t-instant',  note:'Atributos são replicados imediatamente durante a sincronização.',                                        anomaly:''},
