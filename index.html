@@ -243,6 +243,10 @@ body.theme-light .node-box.dimmed .node-codes,body.theme-light .node-box.dimmed 
 body.theme-light .node-box.src-off .node-codes,body.theme-light .node-box.src-off .node-src,
 body.theme-light .node-box.faded .node-codes,body.theme-light .node-box.faded .node-src{opacity:.6;}
 body.theme-light .node-box.faded,body.theme-light .node-box.src-off{background:color-mix(in srgb, var(--nb) 8%, #ffffff) !important;color:#6f6f69 !important;}
+.guide-card{display:block;margin:16px 0.75rem 8px;padding:10px 11px;border:0.5px solid var(--border2);border-left:3px solid var(--blue);border-radius:0;background:var(--bg2);text-decoration:none;}
+.guide-card:hover{background:var(--bg3);}
+.guide-t{display:block;font-size:12px;font-weight:500;color:var(--blue);}
+.guide-d{display:block;font-size:10.5px;line-height:1.35;color:var(--text2);margin-top:3px;}
 /* ROSETTA MODAL */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:100;display:flex;align-items:center;justify-content:center;padding:1rem;}
 .modal-bg.hidden{display:none;}
@@ -265,7 +269,6 @@ body.theme-light .node-box.faded,body.theme-light .node-box.src-off{background:c
   <h1>🛡 Event ID Flow Graph</h1>
   <button class="btn" id="btn-theme" onclick="toggleTheme()" aria-label="Alternar entre tema claro e escuro">☾ Escuro</button>
   <a class="btn btn-train" href="treino.html" title="Pratique montando a linha do tempo de incidentes">Treinar investigação</a>
-  <a class="btn" href="wiki.html" style="text-decoration:none" title="Guia de uso para iniciantes">Como usar</a>
   <div class="header-controls">
     <input type="text" id="search" placeholder="Buscar ID ou descrição..." oninput="doSearch(this.value)">
     <button class="btn" onclick="clearSearch()">Limpar</button>
@@ -305,6 +308,10 @@ body.theme-light .node-box.faded,body.theme-light .node-box.src-off{background:c
     <h3>Camadas</h3>
     <p style="font-size:10px;color:var(--text3);padding:0 0.75rem 0.4rem;line-height:1.35">Clique numa camada para ver só ela.</p>
     <div id="layer-nav"></div>
+    <a class="guide-card" href="wiki.html">
+      <span class="guide-t">Primeiros passos</span>
+      <span class="guide-d">wiki: o que cada parte do grafo mostra e como usar.</span>
+    </a>
   </div>
 
   <div class="canvas-wrap" id="canvas-wrap">
@@ -1131,6 +1138,7 @@ document.getElementById('canvas-inner').insertAdjacentHTML('beforeend', `
     <a href="https://www.linkedin.com/in/alayne-borges/" target="_blank" style="color:var(--blue);text-decoration:none;">LinkedIn</a>
     <a href="https://github.com/w0m73" target="_blank" style="color:var(--blue);text-decoration:none;">GitHub</a>
     <a href="https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/appendix-l--events-to-monitor" target="_blank" style="color:var(--blue);text-decoration:none;">Fonte</a>
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.pt-br" target="_blank" rel="noopener license" style="color:var(--blue);text-decoration:none;">Licença CC BY-NC-SA 4.0</a>
   </div>
 `);
 </script>
