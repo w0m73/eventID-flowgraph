@@ -265,13 +265,13 @@ body.theme-light .node-box.faded,body.theme-light .node-box.src-off{background:c
   <h1>🛡 Event ID Flow Graph</h1>
   <button class="btn" id="btn-theme" onclick="toggleTheme()" aria-label="Alternar entre tema claro e escuro">☾ Escuro</button>
   <a class="btn btn-train" href="treino.html" title="Pratique montando a linha do tempo de incidentes">Treinar investigação</a>
+  <a class="btn" href="wiki.html" style="text-decoration:none" title="Guia de uso para iniciantes">Como usar</a>
   <div class="header-controls">
     <input type="text" id="search" placeholder="Buscar ID ou descrição..." oninput="doSearch(this.value)">
     <button class="btn" onclick="clearSearch()">Limpar</button>
     <button class="btn" id="btn-zoom-in" onclick="zoom(0.15)">＋ Zoom</button>
     <button class="btn" id="btn-zoom-out" onclick="zoom(-0.15)">－ Zoom</button>
     <button class="btn" onclick="resetZoom()">Reset</button>
-    <button class="btn" id="btn-highlight" onclick="toggleHighlightMode()">Modo: Selecionar</button>
     <button class="btn" onclick="openRosetta()" title="Mesmo motivo de falha em NTLM e Kerberos">⇄ NTLM × Kerberos</button>
     <select class="mitre-select" id="src-filter" onchange="applySrcFilter(this.value)" title="Filtrar por onde o evento é gerado">
       <option value="">Onde é gerado</option>
@@ -292,7 +292,6 @@ body.theme-light .node-box.faded,body.theme-light .node-box.src-off{background:c
     <div class="leg-item"><div class="leg-dot" style="background:#A32D2D"></div>Alta</div>
     <div class="leg-item"><div class="leg-dot" style="background:#854F0B"></div>Média</div>
     <div class="leg-item"><div class="leg-dot" style="background:#3B6D11"></div>Baixa</div>
-    <div class="leg-item"><div class="leg-dot" style="background:#185FA5"></div>Info</div>
   </div>
 </div>
 
@@ -1069,11 +1068,6 @@ function zoom(delta){
 }
 function resetZoom(){ zoomLevel=1; document.getElementById('canvas-inner').style.transform='scale(1)'; setTimeout(drawCrossArrows,160); }
 
-function toggleHighlightMode(){
-  highlightMode=!highlightMode;
-  document.getElementById('btn-highlight').classList.toggle('active',highlightMode);
-  document.getElementById('btn-highlight').textContent=highlightMode?'Modo: Realçar':'Modo: Selecionar';
-}
 
 // ══════════════════════════════════════════════════════════════════
 // INIT

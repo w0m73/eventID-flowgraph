@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Como usar · Event ID Flow Graph</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@500&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --wall:#CDD5DD; --frame:#9AA4AE; --board:#FCFDFD; --ledge:#B7C0C8;
+  --ink:#1F2328; --ink2:#4A535C; --line:#C3CCD4;
+  --blue:#1E4BB8; --red:#C62828; --green:#17803D;
+  --note:#FFE36E; --note-edge:#E8C93F; --paper:#FFFFFF; --tape:rgba(233,226,200,.85);
+  --hand:'Kalam','Comic Sans MS',cursive;
+  --text:'Atkinson Hyperlegible',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--wall);scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{font-family:var(--text);color:var(--ink);font-size:16.5px;line-height:1.6;min-height:100vh;padding:28px 20px 40px;
+  background:var(--wall) radial-gradient(circle at 20% 0%,rgba(255,255,255,.35),transparent 60%)}
+a{color:var(--blue)}
+:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+code,.mono{font-family:var(--mono);font-size:.92em;background:#EEF2F6;padding:1px 5px;border-radius:4px}
+
+.board-wrap{max-width:1120px;margin:0 auto}
+.board{background:var(--board);border:12px solid var(--frame);border-radius:6px;
+  box-shadow:0 1px 0 #fff inset,0 18px 40px -20px rgba(31,35,40,.45);padding:28px 36px 30px}
+.ledge{height:30px;margin:0 -6px;background:var(--ledge);border-radius:0 0 6px 6px;box-shadow:0 6px 10px -6px rgba(31,35,40,.5);
+  display:flex;align-items:center;justify-content:flex-end;gap:10px;padding:0 18px}
+.marker{width:86px;height:12px;border-radius:6px;background:#2a2f35;position:relative}
+.marker::after{content:'';position:absolute;right:-8px;top:2px;width:10px;height:8px;border-radius:0 4px 4px 0}
+.marker.b::after{background:var(--blue)} .marker.r::after{background:var(--red)} .marker.g::after{background:var(--green)}
+
+.top{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:30px;align-items:start}
+h1{font-family:var(--hand);font-weight:700;font-size:44px;line-height:1.05;color:var(--blue)}
+.sub{font-family:var(--hand);font-size:20px;color:var(--ink2);margin-top:8px;max-width:38ch}
+.links{display:flex;flex-wrap:wrap;gap:16px;margin-top:16px;font-family:var(--hand);font-size:19px}
+
+.sheet{background:var(--paper);padding:22px 22px 18px;position:relative;transform:rotate(.7deg);
+  box-shadow:0 1px 2px rgba(31,35,40,.15),0 10px 18px -12px rgba(31,35,40,.35)}
+.sheet::before,.sheet::after{content:'';position:absolute;top:-10px;width:70px;height:22px;background:var(--tape)}
+.sheet::before{left:18px;transform:rotate(-6deg)} .sheet::after{right:18px;transform:rotate(5deg)}
+.sheet h2{font-size:18px;margin-bottom:8px}
+.sheet p{font-size:15.5px;margin-bottom:8px}
+.sheet p:last-child{margin-bottom:0}
+
+/* SUMÁRIO */
+.toc{margin:34px 0 8px;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:4px 30px;font-family:var(--hand);font-size:20px}
+.toc a{color:var(--ink);text-decoration:none;display:flex;gap:10px;padding:2px 0}
+.toc a:hover{color:var(--blue)}
+.toc .n{color:var(--blue);min-width:26px}
+
+/* SEÇÕES */
+section{margin-top:44px;scroll-margin-top:20px}
+section>h2{font-family:var(--hand);font-weight:700;font-size:32px;color:var(--blue);line-height:1.15;display:flex;gap:14px;align-items:baseline;
+  border-bottom:3px solid var(--blue);padding-bottom:4px;margin-bottom:16px}
+section>h2 .n{color:var(--red)}
+h3{font-size:19px;margin:24px 0 6px}
+p{max-width:72ch;margin-bottom:12px}
+ul.plain{max-width:72ch;padding-left:22px;margin-bottom:12px}
+ul.plain li{margin-bottom:6px}
+
+/* POST-ITS: "Experimente" e glossário */
+.note{background:var(--note);border-bottom:3px solid var(--note-edge);padding:14px 16px 12px;max-width:520px;margin:18px 0;
+  box-shadow:0 2px 3px rgba(31,35,40,.18),0 8px 14px -10px rgba(31,35,40,.4);transform:rotate(-.6deg)}
+.note .h{font-family:var(--hand);font-weight:700;font-size:21px;line-height:1.1;margin-bottom:4px}
+.note p,.note ol{font-size:15.5px;margin-bottom:0}
+.note ol{padding-left:20px}
+.note li{margin-bottom:3px}
+/* comentário do mentor (caneta vermelha) */
+.mentor{font-family:var(--hand);font-size:19px;color:var(--red);line-height:1.35;max-width:70ch;margin:14px 0;padding-left:14px;border-left:3px solid var(--red)}
+
+/* MAQUETES DA INTERFACE */
+.mock{background:#1e1e1c;border-radius:8px;padding:14px;margin:14px 0 6px;display:inline-block;max-width:100%}
+.mock.light{background:#EDEDE9}
+.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.gnode{width:80px;font:500 11px/1.2 system-ui,sans-serif;color:#fff;text-align:center;padding:6px 4px 5px;border-radius:8px;position:relative}
+.gnode b{display:block;font-size:12px}
+.gnode .cnt{position:absolute;top:-7px;right:-7px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;font:600 9px/16px var(--mono);background:#fff;color:#4A535C;border:0.5px solid #aaa}
+.gnode .dc{position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);font:600 8px/12px system-ui;padding:0 4px;border-radius:6px;background:#fff;color:#4A535C;border:0.5px solid #aaa}
+.gnode .step{position:absolute;top:-8px;left:-8px;width:18px;height:18px;border-radius:50%;font:700 9px/18px system-ui;color:#fff;background:#854F0B}
+.hi{background:#3B6D11}.me{background:#854F0B}.al{background:#A32D2D}
+.dim{opacity:.25}
+.arr{color:#9aa;font-size:14px}
+.mlabel{font:500 10px/1 system-ui;letter-spacing:.06em;color:#b4b2a9;text-transform:uppercase;margin-bottom:8px}
+.mock.light .mlabel{color:#5f5e5a}
+.mbtn{font:11px/1 system-ui;padding:6px 10px;border:0.5px solid #666;border-radius:8px;color:#ddd;background:#282826;display:inline-block}
+.mbtn.blue{background:#85B7EB;color:#042C53;border-color:transparent}
+.mselect{font:12px/1 system-ui;padding:6px 10px;border:0.5px solid #666;border-radius:8px;color:#ddd;background:#282826;display:inline-block}
+.minput{font:12px/1 system-ui;padding:7px 10px;border:0.5px solid #666;border-radius:8px;color:#888;background:#282826;display:inline-block;width:190px}
+.caption{font-family:var(--hand);font-size:17px;color:var(--ink2);margin-bottom:14px}
+
+/* TABELA DE CONTROLES */
+.ctrl{display:grid;grid-template-columns:200px minmax(0,1fr);gap:0;max-width:900px;border-top:2px solid var(--line);margin:10px 0 14px}
+.ctrl>div{padding:12px 10px 12px 0;border-bottom:2px solid var(--line)}
+.ctrl>div:nth-child(odd){font-weight:700}
+.ctrl .ex{display:block;font-size:14.5px;color:var(--ink2);margin-top:4px}
+
+/* PAINEL ANOTADO */
+.anno{display:grid;grid-template-columns:300px minmax(0,1fr);gap:28px;align-items:start;margin:16px 0}
+.panel{background:#1e1e1c;color:#f0efeb;border-radius:8px;padding:16px;font:13px/1.45 system-ui,sans-serif}
+.panel .t{font:500 21px var(--mono);color:#97C459}
+.panel .s{font:500 10px system-ui;letter-spacing:.06em;color:#b4b2a9;text-transform:uppercase;margin-top:12px;display:flex;justify-content:space-between}
+.panel .pill{display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;background:#173404;color:#C0DD97;margin-right:4px}
+.panel .pill.i{background:#042C53;color:#85B7EB}
+.panel .item{background:#282826;border:0.5px solid #444;border-radius:8px;padding:6px 8px;margin-top:6px;font-size:11.5px}
+.panel .item.w{border-left:3px solid #BA7517}
+.panel .ai{border-left:2px solid #7F77DD;padding-left:6px;margin-top:4px;font-size:10.5px;color:#b4b2a9}
+.badge-n{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--red);color:#fff;font:700 12px/1 var(--text);flex-shrink:0}
+.panel .badge-n{width:18px;height:18px;font-size:10px}
+ol.legend{list-style:none;display:flex;flex-direction:column;gap:12px}
+ol.legend li{display:flex;gap:12px}
+ol.legend li p{margin:0}
+
+/* GLOSSÁRIO */
+.gloss{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:20px;margin-top:10px}
+.gloss .note{margin:0;max-width:none}
+.gloss .note:nth-child(3n+1){transform:rotate(.8deg)}
+.gloss .note:nth-child(3n+2){transform:rotate(-1deg)}
+.gloss .note:nth-child(3n){transform:rotate(.3deg)}
+
+footer{max-width:1120px;margin:18px auto 0;font-size:14px;color:var(--ink2);display:flex;gap:18px;flex-wrap:wrap}
+footer a{color:var(--ink)}
+
+@media (max-width:860px){
+  .top,.anno{grid-template-columns:1fr}
+  .board{padding:20px 16px;border-width:8px}
+  h1{font-size:34px}
+  .ctrl{grid-template-columns:1fr}
+  .ctrl>div:nth-child(odd){border-bottom:0;padding-bottom:0}
+}
+</style>
+</head>
+<body>
+<div class="board-wrap">
+<main class="board">
+
+  <div class="top">
+    <div>
+      <h1>Como usar o grafo</h1>
+      <p class="sub">Um guia passo a passo para quem está começando em segurança. Leia na ordem, e faça os exercícios dos post-its amarelos com o grafo aberto em outra aba.</p>
+      <div class="links">
+        <a href="index.html" target="_blank" rel="noopener">abrir o grafo</a>
+        <a href="treino.html">ir para o treino</a>
+      </div>
+    </div>
+    <aside class="sheet">
+      <h2>Antes de começar: o que é um Event ID?</h2>
+      <p>O Windows anota num diário tudo o que acontece de importante: alguém entrou, um programa abriu, uma senha foi trocada. Esse diário é o <strong>log de eventos</strong>.</p>
+      <p>Cada tipo de anotação tem um número fixo, o <strong>Event ID</strong>. O <code>4624</code>, por exemplo, sempre significa "alguém fez logon com sucesso", em qualquer Windows do mundo.</p>
+      <p>Investigar um incidente é ler essas anotações na ordem certa. O grafo mostra quais eventos costumam vir antes e depois de cada um.</p>
+    </aside>
+  </div>
+
+  <nav class="toc" aria-label="Sumário">
+    <a href="#ler"><span class="n">1</span>Lendo o grafo</a>
+    <a href="#painel"><span class="n">2</span>O painel de um evento</a>
+    <a href="#ferramentas"><span class="n">3</span>Os botões do topo</a>
+    <a href="#camadas"><span class="n">4</span>Filtrando por camada</a>
+    <a href="#cenarios"><span class="n">5</span>Os cenários de ataque</a>
+    <a href="#roteiro"><span class="n">6</span>Sua primeira hora</a>
+    <a href="#treino"><span class="n">7</span>Treinando</a>
+    <a href="#glossario"><span class="n">8</span>Glossário</a>
+  </nav>
+
+  <!-- 1 -->
+  <section id="ler">
+    <h2><span class="n">1</span>Lendo o grafo</h2>
+    <p>O grafo é uma grande tabela de eventos. Cada <strong>linha</strong> é uma <strong>camada</strong>: um assunto, como "Autenticação" ou "Processos & Serviços". Cada <strong>retângulo</strong> é um evento.</p>
+
+    <div class="mock" role="img" aria-label="Exemplo de três eventos do grafo lado a lado">
+      <div class="mlabel">Autenticação</div>
+      <div class="row">
+        <div class="gnode hi"><b>4625</b>Logon Failed<span class="cnt">21</span></div><span class="arr">→</span>
+        <div class="gnode me"><b>4740</b>Locked Out</div><span class="arr">→</span>
+        <div class="gnode hi"><b>4768</b>TGT Request<span class="cnt">15</span><span class="dc">DC</span></div>
+      </div>
+    </div>
+    <p class="caption">Três eventos da camada Autenticação, como aparecem no grafo.</p>
+
+    <h3>O que cada detalhe quer dizer</h3>
+    <ul class="plain">
+      <li><strong>O número grande</strong> é o Event ID. Embaixo vem um apelido curto em inglês, como "Logon Failed".</li>
+      <li><strong>A cor</strong> é a criticidade do evento sozinho: verde é baixa, marrom é média e vermelho é alta. A legenda fica no canto superior direito.</li>
+      <li><strong>O número no canto</strong> (o "21" do 4625) avisa que o evento tem códigos que explicam o porquê. Você vai vê-los no painel (parte 2).</li>
+      <li><strong>O selo "DC"</strong> marca eventos que só aparecem no controlador de domínio, o servidor que cuida das senhas da empresa. Se você só coleta logs das estações, nunca verá esses eventos.</li>
+      <li><strong>A seta reta (→)</strong> entre dois vizinhos diz que um costuma vir depois do outro. <strong>As setas curvas</strong> fazem a mesma ligação entre camadas diferentes.</li>
+    </ul>
+
+    <p class="mentor">Cuidado com a cor: ela mede o evento isolado. Um 4625 verde, repetido 300 vezes contra contas diferentes, é um ataque. A gravidade quase sempre vem do padrão, não do evento.</p>
+  </section>
+
+  <!-- 2 -->
+  <section id="painel">
+    <h2><span class="n">2</span>O painel de um evento</h2>
+    <p>Clique em qualquer evento e um painel abre à direita. Ele responde a tudo o que você precisa saber sobre aquele evento. Os eventos ligados a ele ficam acesos no grafo, e o resto fica apagado.</p>
+
+    <div class="anno">
+      <div class="panel" role="img" aria-label="Exemplo do painel do evento 4625 com marcações numeradas">
+        <div class="t">Event ID 4625</div>
+        <div>Uma conta falhou ao fazer logon</div>
+        <div style="margin-top:6px"><span class="pill">Low</span><span class="pill i">T1110 – Brute Force</span> <span class="badge-n">1</span></div>
+        <div class="s">Onde é gerado <span class="badge-n">2</span></div><div>Destino: host acessado</div>
+        <div class="s">Pré-requisito de auditoria <span class="badge-n">3</span></div><div>Logon/Logoff › Logon</div>
+        <div class="s">Códigos e campos-chave <span class="badge-n">4</span></div>
+        <div class="item w"><b style="font-family:var(--mono);color:#85B7EB">0xC000006A</b> Senha errada</div>
+        <div class="s">Janelas de tempo típicas <span class="badge-n">5</span></div>
+        <div class="item">4625 → 4624 · Variável<div class="ai">Se for um agente de IA: …</div></div>
+        <div class="s">Eventos que podem seguir <span class="badge-n">6</span></div>
+        <div class="item">4624 Logon OK</div>
+      </div>
+      <ol class="legend">
+        <li><span class="badge-n">1</span><p><strong>Criticidade e técnica.</strong> O selo verde é a criticidade; o azul é a técnica de ataque no MITRE ATT&amp;CK (mais abaixo, na seção "MITRE ATT&amp;CK", o link abre a página da técnica). Nos eventos mais comuns, uma nota explica quando o evento passa a ser preocupante.</p></li>
+        <li><span class="badge-n">2</span><p><strong>Onde é gerado.</strong> Em qual máquina procurar o evento: no DC, na máquina de origem (de onde o acesso partiu) ou na de destino (a que foi acessada). É a primeira pergunta de toda investigação.</p></li>
+        <li><span class="badge-n">3</span><p><strong>Pré-requisito de auditoria.</strong> O que precisa estar ligado no Windows para o evento existir. Se a auditoria estiver desligada, o evento simplesmente não aparece no seu SIEM.</p></li>
+        <li><span class="badge-n">4</span><p><strong>Códigos e campos-chave.</strong> O evento diz <em>o que</em> aconteceu; o código diz <em>por que</em>. Um 4625 com <code>0xC000006A</code> é senha errada; com <code>0xC0000064</code>, o usuário nem existe. A borda colorida dá o peso: cinza é normal, amarela pede atenção, vermelha é um forte indicador. Clique no nome do campo para abrir ou fechar a lista.</p></li>
+        <li><span class="badge-n">5</span><p><strong>Janelas de tempo.</strong> Quanto tempo costuma passar até o próximo evento. Cada janela traz o campo que liga os dois eventos numa busca ("correlação"), uma anomalia em vermelho e, em algumas, uma nota roxa sobre como o ritmo muda quando quem age é um agente de IA.</p></li>
+        <li><span class="badge-n">6</span><p><strong>Eventos que podem seguir e preceder.</strong> Os vizinhos na história. Clique em um para pular até ele; o grafo rola sozinho.</p></li>
+      </ol>
+    </div>
+
+    <div class="note">
+      <div class="h">Experimente</div>
+      <ol>
+        <li>Abra o <a href="index.html#evento=4625" target="_blank" rel="noopener">evento 4625 no grafo</a>.</li>
+        <li>No painel, abra "Status / Sub Status" e ache o código de conta bloqueada.</li>
+        <li>Em "Eventos que podem seguir", clique no 4740. Qual é a janela de tempo entre os dois?</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section id="ferramentas">
+    <h2><span class="n">3</span>Os botões do topo</h2>
+
+    <div class="mock" role="img" aria-label="Barra de ferramentas do grafo">
+      <div class="row" style="margin-bottom:8px">
+        <span class="mbtn">☀ Claro</span><span class="mbtn blue">Treinar investigação</span><span class="mbtn">Como usar</span>
+        <span class="minput">Buscar ID ou descrição...</span><span class="mbtn">Limpar</span><span class="mbtn">＋ Zoom</span><span class="mbtn">－ Zoom</span><span class="mbtn">Reset</span><span class="mbtn">⇄ NTLM × Kerberos</span>
+      </div>
+      <div class="row"><span class="mselect">Onde é gerado ▾</span><span class="mselect">MITRE ATT&amp;CK... ▾</span></div>
+    </div>
+
+    <div class="ctrl">
+      <div>Buscar</div>
+      <div>Digite um Event ID (<code>4769</code>), uma palavra (<code>kerberos</code>) ou um código (<code>0xC0000234</code>). Só os eventos que combinam ficam acesos, e o grafo rola até o primeiro.<span class="ex">Buscar por código é útil quando você tem só o código de um alerta e quer saber em quais eventos ele aparece.</span></div>
+      <div>Limpar</div>
+      <div>Desfaz tudo de uma vez: busca, filtros, cenário e evento selecionado. Use quando o grafo ficar confuso.</div>
+      <div>＋ Zoom, － Zoom e Reset</div>
+      <div>Aumentam e diminuem o tamanho do grafo. Reset volta ao tamanho normal.</div>
+      <div>☀ Claro / ☾ Escuro</div>
+      <div>Troca o tema. A página sempre abre no escuro; o claro vale até você fechar ou recarregar.</div>
+      <div>⇄ NTLM × Kerberos</div>
+      <div>Abre uma tabela com o mesmo motivo de falha escrito nos dois jeitos de autenticar do Windows. Senha errada é <code>0xC000006A</code> no NTLM e <code>0x18</code> no Kerberos.<span class="ex">Por que importa: um ataque de senhas pode aparecer em qualquer um dos dois. Quem procura só um vê metade do ataque. Clique num código da tabela para abrir o evento.</span></div>
+      <div>Onde é gerado</div>
+      <div>Mostra só os eventos de um tipo de máquina, como "Só no DC". Responde à pergunta "se eu coletar só desta máquina, o que eu enxergo?".</div>
+      <div>MITRE ATT&amp;CK</div>
+      <div>Escolha uma técnica de ataque e o grafo acende os eventos ligados a ela.</div>
+      <div>Treinar investigação</div>
+      <div>Abre a página de exercícios (parte 7).</div>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section id="camadas">
+    <h2><span class="n">4</span>Filtrando por camada</h2>
+    <p>Na coluna da esquerda estão as sete camadas. Clique em uma para ver só a linha dela; os eventos passam a ocupar várias linhas, sem precisar rolar para o lado. Para voltar, clique de novo na mesma camada ou em "Todas as camadas".</p>
+    <p>As camadas seguem a ordem de um acesso: o <strong>Sistema</strong> liga, alguém se <strong>autentica</strong>, recebe uma <strong>sessão</strong> com privilégios, mexe em <strong>contas e grupos</strong>, roda <strong>processos e serviços</strong>, toca em <strong>objetos</strong> (arquivos, registro, AD) e, por fim, mexe na <strong>auditoria e rede</strong>.</p>
+    <div class="note">
+      <div class="h">Experimente</div>
+      <p>Filtre só "Autenticação" e conte quantos eventos têm o selo DC. Agora você sabe quantos eventos de login você perderia sem coletar os logs do controlador de domínio.</p>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section id="cenarios">
+    <h2><span class="n">5</span>Os cenários de ataque</h2>
+    <p>A barra "Cenários", abaixo do topo, tem 16 ataques comuns. Clique em um e três coisas acontecem:</p>
+
+    <div class="mock" role="img" aria-label="Exemplo de cenário com passos numerados nos eventos">
+      <div class="row">
+        <div class="gnode hi"><b>4624</b>Logon OK<span class="step">1·3</span></div><span class="arr">→</span>
+        <div class="gnode hi dim"><b>4634</b>Logoff</div><span class="arr">→</span>
+        <div class="gnode hi"><b>4672</b>Special Privs<span class="step">4</span></div><span class="arr">→</span>
+        <div class="gnode me dim"><b>4740</b>Locked Out</div>
+      </div>
+    </div>
+    <p class="caption">No Pass-the-Hash, o 4624 aparece duas vezes: nos passos 1 e 3.</p>
+
+    <ul class="plain">
+      <li><strong>Os eventos do ataque acendem</strong> com o número do passo. Um evento que aparece mais de uma vez mostra os dois números, como "1·3".</li>
+      <li><strong>O painel mostra os passos na ordem</strong>, cada um com o selo da máquina onde acontece (Origem, DC ou Destino) e uma dica do que procurar.</li>
+      <li><strong>"O que preciso para detectar"</strong> lista onde coletar os logs e qual auditoria ligar para enxergar aquele ataque.</li>
+    </ul>
+
+    <h3>O aprofundamento (para depois)</h3>
+    <p>No fim do painel há uma moldura colorida, "Aprofundamento · leitura adversarial", com três blocos fechados. Abra um de cada vez, e só depois de entender os passos:</p>
+    <ul class="plain">
+      <li><strong>1 · O que varia no log:</strong> como os eventos mudam quando o atacante faz o mesmo ataque de outro jeito.</li>
+      <li><strong>2 · Chokepoint:</strong> o comportamento que o ataque não consegue evitar, seja qual for o jeito. É nele que uma boa detecção se apoia.</li>
+      <li><strong>3 · O que o log nativo não vê:</strong> o que fica invisível sem ferramentas extras, como EDR ou Sysmon.</li>
+    </ul>
+
+    <p class="mentor">Não pule direto para o aprofundamento. Primeiro entenda a sequência normal; a variação só faz sentido quando você sabe do que ela está variando.</p>
+
+    <div class="note">
+      <div class="h">Experimente</div>
+      <ol>
+        <li>Abra o <a href="index.html#cenario=password-spray" target="_blank" rel="noopener">cenário Password Spray</a>.</li>
+        <li>Veja em qual máquina cada passo acontece.</li>
+        <li>Abra "2 · Chokepoint". Por que contar contas por origem funciona melhor do que contar tentativas?</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section id="roteiro">
+    <h2><span class="n">6</span>Sua primeira hora</h2>
+    <p>Um roteiro para quem nunca usou o grafo. Cada passo leva uns dez minutos.</p>
+    <ol class="legend">
+      <li><span class="badge-n">1</span><p><strong>O logon.</strong> Abra o <a href="index.html#evento=4624" target="_blank" rel="noopener">4624</a> e leia os nove Logon Types nos códigos. Quais você reconhece do seu dia a dia?</p></li>
+      <li><span class="badge-n">2</span><p><strong>A falha.</strong> Abra o <a href="index.html#evento=4625" target="_blank" rel="noopener">4625</a> e compare os códigos amarelos com os vermelhos. Por que conta desabilitada pesa mais que senha errada?</p></li>
+      <li><span class="badge-n">3</span><p><strong>Os dois protocolos.</strong> Abra "⇄ NTLM × Kerberos" e encontre a senha errada nas duas colunas.</p></li>
+      <li><span class="badge-n">4</span><p><strong>Um ataque inteiro.</strong> Ative o cenário Brute Force e siga os passos no painel.</p></li>
+      <li><span class="badge-n">5</span><p><strong>A coleta.</strong> No mesmo cenário, leia "O que preciso para detectar". Alguma dessas auditorias está ligada onde você trabalha?</p></li>
+      <li><span class="badge-n">6</span><p><strong>A prática.</strong> Vá para o <a href="treino.html#cenario=brute-force">treino</a> e monte o mesmo incidente sem olhar.</p></li>
+    </ol>
+  </section>
+
+  <!-- 7 -->
+  <section id="treino">
+    <h2><span class="n">7</span>Treinando</h2>
+    <p>Ler o grafo ensina; montar a história sozinho fixa. A página de treino tem os mesmos 16 ataques, contados como chamados de suporte. O nome do ataque fica escondido, porque na vida real ninguém te avisa qual é.</p>
+    <ul class="plain">
+      <li><strong>Etapa 1:</strong> coloque os cartões na ordem e na máquina certa. Dois cartões são ruído: deixe-os de fora.</li>
+      <li><strong>Etapa 2:</strong> escolha o campo que liga dois eventos.</li>
+      <li><strong>Etapa 3:</strong> escolha o sinal que continua aparecendo mesmo quando o atacante muda de tática.</li>
+    </ul>
+    <p>No fim, o comentário do mentor revela o ataque e tem um link para abri-lo no grafo.</p>
+    <p class="mentor">Errar faz parte. Quem erra a máquina de um passo aprende mais sobre "onde é gerado" do que quem só leu a explicação.</p>
+  </section>
+
+  <!-- 8 -->
+  <section id="glossario">
+    <h2><span class="n">8</span>Glossário</h2>
+    <div class="gloss">
+      <div class="note"><div class="h">Log Security</div><p>O "diário" de segurança do Windows, onde ficam quase todos os eventos do grafo.</p></div>
+      <div class="note"><div class="h">DC</div><p>Controlador de domínio. O servidor que guarda as contas e senhas da empresa e confere cada login.</p></div>
+      <div class="note"><div class="h">SIEM</div><p>Sistema que junta os logs de todas as máquinas num só lugar para buscar e alertar. Splunk é um exemplo.</p></div>
+      <div class="note"><div class="h">NTLM</div><p>Jeito antigo de o Windows conferir senhas. Ainda muito usado, e alvo de ataques como Pass-the-Hash.</p></div>
+      <div class="note"><div class="h">Kerberos</div><p>Jeito moderno de autenticar no domínio, com "ingressos" chamados tickets. O TGT prova quem você é; o TGS dá acesso a um serviço.</p></div>
+      <div class="note"><div class="h">Logon ID</div><p>Um número único de cada sessão. Junta tudo o que aconteceu dentro dela, do logon ao logoff.</p></div>
+      <div class="note"><div class="h">Política de auditoria</div><p>A configuração que diz ao Windows quais eventos de segurança anotar. Se a categoria estiver desligada, o evento não existe.</p></div>
+      <div class="note"><div class="h">SACL</div><p>Uma lista, num arquivo ou objeto, que pede ao Windows para anotar quem mexeu nele. Sem ela, eventos como o 4663 não aparecem.</p></div>
+      <div class="note"><div class="h">MITRE ATT&amp;CK</div><p>Um catálogo público de técnicas de ataque, cada uma com um código, como T1110 (Brute Force).</p></div>
+      <div class="note"><div class="h">Correlação</div><p>Ligar eventos diferentes pela mesma pista, como o mesmo Logon ID ou o mesmo IP, para reconstruir a história.</p></div>
+      <div class="note"><div class="h">Chokepoint</div><p>O ponto de passagem obrigatório de um ataque: o que ele não consegue fazer de outro jeito. A detecção mais forte mira nele.</p></div>
+      <div class="note"><div class="h">Telemetria</div><p>Todo dado que as máquinas registram e enviam: logs, alertas, conexões. O grafo trata da telemetria nativa do Windows.</p></div>
+    </div>
+  </section>
+
+</main>
+<div class="ledge" aria-hidden="true"><span class="marker b"></span><span class="marker r"></span><span class="marker g"></span></div>
+</div>
+<footer>
+  <a href="index.html">Event ID Flow Graph</a>
+  <a href="treino.html">Treino de investigação</a>
+</footer>
+</body>
+</html>
