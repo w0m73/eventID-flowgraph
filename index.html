@@ -1480,8 +1480,19 @@ function doSearch(v){
   applyFilter();
 }
 function clearSearch(){
+  // Limpar = reset completo: busca, cenário, MITRE, origem e seleção
   document.getElementById('search').value='';
   searchFilter='';
+  clearScenario();
+  mitreFilter='';
+  const ms=document.getElementById('mitre-filter'); ms.value=''; ms.classList.remove('has-filter');
+  const sf=document.getElementById('src-filter'); if(sf){ sf.value=''; sf.classList.remove('has-filter'); }
+  selectedNode=null;
+  closeDetailSilent();
+  document.querySelectorAll('.node-box').forEach(b=>{
+    b.classList.remove('highlighted','dimmed','selected','src-off');
+    b.style.opacity=''; b.style.pointerEvents=''; b.style.outline='';
+  });
   applyFilter();
 }
 function applyFilter(){
