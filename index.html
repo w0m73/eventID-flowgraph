@@ -179,6 +179,38 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .timing-note{font-size:10px;color:var(--text3);line-height:1.3;}
 .timing-anomaly{font-size:10px;color:#A32D2D;line-height:1.3;margin-top:1px;}
 @media(prefers-color-scheme:dark){.timing-anomaly{color:#F09595;}}
+
+/* STATUS CODES */
+.node-codes{position:absolute;top:-6px;right:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;font-size:9px;font-weight:600;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--text2);border:0.5px solid var(--border2);pointer-events:none;font-family:'Courier New',monospace;}
+.code-field{display:flex;flex-direction:column;gap:4px;}
+.code-field-name{font-size:11px;font-weight:500;color:var(--text);display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;}
+.code-field-name span.chev{color:var(--text3);font-size:10px;}
+.code-field-hint{font-size:10px;color:var(--text3);line-height:1.35;}
+.code-list{display:flex;flex-direction:column;gap:3px;}
+.code-field.collapsed .code-list,.code-field.collapsed .code-field-hint{display:none;}
+.code-item{font-size:11px;padding:5px 8px;background:var(--bg2);border-radius:var(--radius);border:0.5px solid var(--border);border-left:3px solid var(--border2);}
+.code-item.sev-w{border-left-color:#BA7517;}
+.code-item.sev-h{border-left-color:#A32D2D;}
+.code-item.hit{background:var(--blue-bg);}
+.code-top{display:flex;gap:6px;align-items:baseline;}
+.code-val{font-family:'Courier New',monospace;font-weight:600;color:var(--blue);flex-shrink:0;}
+.code-mean{color:var(--text);}
+.code-note{font-size:10px;color:var(--text3);line-height:1.35;margin-top:2px;}
+.timing-via{font-size:10px;font-family:'Courier New',monospace;color:var(--text2);}
+/* ROSETTA MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:100;display:flex;align-items:center;justify-content:center;padding:1rem;}
+.modal-bg.hidden{display:none;}
+.modal{background:var(--bg);border-radius:var(--radius-lg);border:0.5px solid var(--border2);max-width:760px;width:100%;max-height:90vh;overflow:auto;padding:1.1rem 1.2rem;display:flex;flex-direction:column;gap:0.6rem;}
+.modal h2{font-size:15px;font-weight:500;}
+.modal p{font-size:12px;color:var(--text2);line-height:1.5;}
+.ros-table{border-collapse:collapse;width:100%;font-size:12px;}
+.ros-table th{text-align:left;font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;padding:6px 8px;border-bottom:0.5px solid var(--border2);}
+.ros-table td{padding:6px 8px;border-bottom:0.5px solid var(--border);vertical-align:top;}
+.ros-cell{font-family:'Courier New',monospace;color:var(--blue);cursor:pointer;font-weight:600;}
+.ros-cell:hover{text-decoration:underline;}
+.ros-ev{font-size:10px;color:var(--text3);font-family:inherit;font-weight:400;}
+.ros-na{color:var(--text3);}
+.ros-foot{font-size:11px;color:var(--text3);line-height:1.5;}
 </style>
 </head>
 <body>
@@ -192,6 +224,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <button class="btn" id="btn-zoom-out" onclick="zoom(-0.15)">－ Zoom</button>
     <button class="btn" onclick="resetZoom()">Reset</button>
     <button class="btn" id="btn-highlight" onclick="toggleHighlightMode()">Modo: Selecionar</button>
+    <button class="btn" onclick="openRosetta()" title="Mesmo motivo de falha em NTLM e Kerberos">⇄ Códigos NTLM × Kerberos</button>
     <div class="mitre-wrap">
       <select class="mitre-select" id="mitre-filter" onchange="applyMitreFilter(this.value)" title="Filtrar por técnica MITRE ATT&CK">
         <option value="">MITRE ATT&amp;CK...</option>
@@ -237,6 +270,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <div class="detail-section">Log</div><div class="detail-val" id="d-log"></div>
     <div class="detail-section">ID Legado</div><div class="detail-val" id="d-legacy"></div>
     <div class="detail-section">MITRE ATT&CK</div><div class="detail-val" id="d-mitre"></div>
+    <div class="detail-section" id="d-codes-lbl" style="display:none">Códigos e campos-chave</div>
+    <div class="related-list" id="d-codes"></div>
     <div class="detail-section" id="d-timing-lbl" style="display:none">Janelas de tempo típicas</div>
     <div class="timing-list" id="d-timing"></div>
     <div class="detail-section" id="d-succ-lbl" style="display:none">Eventos que podem seguir</div>
@@ -246,6 +281,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   </div>
 </div>
 
+
+<div class="modal-bg hidden" id="rosetta" onclick="if(event.target===this)closeRosetta()">
+  <div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem">
+      <h2>Mesmo motivo, códigos diferentes</h2>
+      <button class="btn" onclick="closeRosetta()">✕ Fechar</button>
+    </div>
+    <p>NTLM (4625 e 4776) registra a falha com códigos NTSTATUS; Kerberos (4768 e 4771) usa os próprios códigos de erro. Um password spray pode aparecer em qualquer uma das colunas — olhar só uma é perder metade do ataque. Clique num código para abrir o evento.</p>
+    <table class="ros-table" id="ros-table"></table>
+    <div class="ros-foot">No 4625, quando há SubStatus o Status costuma vir genérico (0xC000006D) e o detalhe fica no SubStatus. Em conta bloqueada, o detalhe vem no próprio Status. No Kerberos, 0x12 agrupa conta bloqueada, desabilitada e expirada — o NTLM é mais específico.</div>
+  </div>
+</div>
 <script>
 // ══════════════════════════════════════════════════════════════════
 // DATA — 7 camadas lógicas, ~200 eventos
@@ -479,6 +526,102 @@ const LAYERS = [
       {id:"4892", short:"CS Prop Chg",  desc:"Uma propriedade dos Certificate Services foi alterada",       crit:"Medium",log:"Security",legacy:"796",         mitre:"",                      succs:[]},
     ]
   },
+];
+
+
+// ══════════════════════════════════════════════════════════════════
+// STATUS / RESULT CODES — campos que explicam o "porquê" de cada evento
+// sev: n = neutro, w = merece atenção, h = forte indicador
+// ══════════════════════════════════════════════════════════════════
+const LOGON_TYPES = [
+  {c:'2',  m:'Interactive',        n:'Logon no console físico.', sev:'n'},
+  {c:'3',  m:'Network',            n:'Acesso a compartilhamento/SMB, WinRM etc. Pass-the-Hash via NTLM aparece aqui.', sev:'n'},
+  {c:'4',  m:'Batch',              n:'Tarefa agendada.', sev:'n'},
+  {c:'5',  m:'Service',            n:'Serviço iniciado com conta própria.', sev:'n'},
+  {c:'7',  m:'Unlock',             n:'Desbloqueio de estação.', sev:'n'},
+  {c:'8',  m:'NetworkCleartext',   n:'Senha trafegou em texto claro (ex.: IIS Basic Auth).', sev:'w'},
+  {c:'9',  m:'NewCredentials',     n:'runas /netonly. Com Logon Process "seclogo" é o padrão clássico de PtH (sekurlsa::pth).', sev:'h'},
+  {c:'10', m:'RemoteInteractive',  n:'RDP. Cruze com IP de origem e horário.', sev:'w'},
+  {c:'11', m:'CachedInteractive',  n:'Credencial em cache, sem contato com o DC.', sev:'n'},
+];
+const NTSTATUS = [
+  {c:'0xC000006A', m:'Senha errada (usuário existe)',  n:'Muitas contas diferentes da mesma origem = password spray.', sev:'w'},
+  {c:'0xC0000064', m:'Usuário não existe',              n:'Muitos nomes inexistentes = enumeração de usuários.', sev:'w'},
+  {c:'0xC0000234', m:'Conta bloqueada',                 n:'Aparece depois do 4740. Tentativas que continuam = ferramenta automatizada.', sev:'h'},
+  {c:'0xC0000072', m:'Conta desabilitada',              n:'Uso de conta inativa: credencial antiga ou vazada.', sev:'h'},
+  {c:'0xC0000193', m:'Conta expirada',                  n:'Ex-funcionário ou conta temporária ainda em uso.', sev:'w'},
+  {c:'0xC0000071', m:'Senha expirada',                  n:'Geralmente operacional.', sev:'n'},
+  {c:'0xC0000224', m:'Senha deve ser trocada',          n:'Geralmente operacional.', sev:'n'},
+  {c:'0xC000006F', m:'Fora do horário permitido',       n:'Tentativa fora da janela da conta.', sev:'w'},
+  {c:'0xC0000070', m:'Estação não autorizada',          n:'Conta usada a partir de máquina não prevista.', sev:'w'},
+  {c:'0xC000015B', m:'Tipo de logon não concedido',     n:'Ex.: conta sem direito de RDP tentando Logon Type 10.', sev:'w'},
+  {c:'0xC0000133', m:'Relógio fora de sincronia',       n:'Geralmente operacional.', sev:'n'},
+  {c:'0xC000006D', m:'Genérico (veja o SubStatus)',     n:'Status "guarda-chuva": o motivo real está no SubStatus.', sev:'n'},
+];
+const KERB_ERR = [
+  {c:'0x0',  m:'Sucesso',                                   n:'', sev:'n'},
+  {c:'0x6',  m:'Usuário não existe (C_PRINCIPAL_UNKNOWN)',  n:'Em volume = enumeração de usuários via Kerberos (ex.: kerbrute).', sev:'w'},
+  {c:'0xC',  m:'Restrição de política (POLICY)',           n:'Restrição de estação, horário ou exigência de smart card.', sev:'w'},
+  {c:'0x12', m:'Conta bloqueada, desabilitada ou expirada', n:'Equivale a vários códigos NTLM ao mesmo tempo.', sev:'h'},
+  {c:'0x17', m:'Senha expirada (KEY_EXPIRED)',              n:'Geralmente operacional.', sev:'n'},
+  {c:'0x18', m:'Senha errada (PREAUTH_FAILED)',             n:'Muitas contas da mesma origem = password spray via Kerberos.', sev:'w'},
+  {c:'0x25', m:'Relógio fora de sincronia (SKEW)',          n:'Geralmente operacional.', sev:'n'},
+];
+const KERB_ETYPE = [
+  {c:'0x11', m:'AES128',          n:'Normal em ambientes modernos.', sev:'n'},
+  {c:'0x12', m:'AES256',          n:'Normal em ambientes modernos.', sev:'n'},
+  {c:'0x17', m:'RC4-HMAC',        n:'Em ambiente que suporta AES, é forte indicador de roasting (ferramenta pedindo RC4 por ser quebrável offline).', sev:'h'},
+  {c:'0x18', m:'RC4-HMAC-EXP',    n:'Legado; suspeito em ambientes modernos.', sev:'w'},
+  {c:'0xFFFFFFFF', m:'Falha',     n:'Ticket não emitido.', sev:'n'},
+];
+
+const CODES = {
+  '4625':[
+    {f:'Status / Sub Status', hint:'Status costuma vir genérico (0xC000006D); o motivo real fica no SubStatus.', codes:NTSTATUS},
+    {f:'Logon Type', hint:'Qual canal foi tentado.', codes:LOGON_TYPES, collapsed:true},
+  ],
+  '4624':[
+    {f:'Logon Type', hint:'Mesmo usuário, canais diferentes = significados diferentes.', codes:LOGON_TYPES},
+  ],
+  '4776':[
+    {f:'Error Code', hint:'O 4776 é gerado também no sucesso (0x0). Mesmos códigos NTSTATUS do 4625.', codes:[{c:'0x0',m:'Sucesso',n:'',sev:'n'}, ...NTSTATUS.filter(x=>x.c!=='0xC000006D')]},
+  ],
+  '4771':[
+    {f:'Failure Code', hint:'Pré-autenticação falhou. Senha errada no Kerberos cai aqui, não no 4625.', codes:KERB_ERR.filter(x=>['0x12','0x17','0x18','0x25'].includes(x.c))},
+  ],
+  '4768':[
+    {f:'Result Code', hint:'Resultado da emissão do TGT.', codes:KERB_ERR},
+    {f:'Pre-Authentication Type', hint:'Como o cliente provou a identidade.', codes:[
+      {c:'0',     m:'Sem pré-autenticação', n:'Conta com DONT_REQ_PREAUTH: alvo de AS-REP roasting.', sev:'h'},
+      {c:'2',     m:'Senha (PA-ENC-TIMESTAMP)', n:'Padrão.', sev:'n'},
+      {c:'15–17', m:'Certificado / smart card (PKINIT)', n:'Esperado onde há smart card ou certificados.', sev:'n'},
+    ], collapsed:true},
+    {f:'Ticket Encryption Type', hint:'Algoritmo do ticket emitido.', codes:KERB_ETYPE, collapsed:true},
+  ],
+  '4769':[
+    {f:'Ticket Encryption Type', hint:'Chave para detectar Kerberoasting: combine com volume de serviços distintos por conta.', codes:KERB_ETYPE},
+    {f:'Failure Code', hint:'Resultado da emissão do TGS.', codes:[KERB_ERR[0]], collapsed:true},
+  ],
+  '4688':[
+    {f:'Token Elevation Type', hint:'Nível de privilégio com que o processo nasceu.', codes:[
+      {c:'%%1936', m:'Tipo 1 — token completo', n:'UAC desativado ou conta built-in Administrator.', sev:'w'},
+      {c:'%%1937', m:'Tipo 2 — elevado',        n:'"Executar como administrador". Avalie o processo pai.', sev:'w'},
+      {c:'%%1938', m:'Tipo 3 — limitado',       n:'Padrão para usuário comum.', sev:'n'},
+    ]},
+  ],
+};
+
+// Matriz NTLM × Kerberos (mesmo motivo, códigos diferentes)
+const ROSETTA = [
+  {why:'Senha errada',             ntlm:'0xC000006A', ntlmEv:'4625', ntlm2:'0xC000006A', krb:'0x18', krbEv:'4771'},
+  {why:'Usuário não existe',       ntlm:'0xC0000064', ntlmEv:'4625', ntlm2:'0xC0000064', krb:'0x6',  krbEv:'4768'},
+  {why:'Conta bloqueada',          ntlm:'0xC0000234', ntlmEv:'4625', ntlm2:'0xC0000234', krb:'0x12', krbEv:'4768'},
+  {why:'Conta desabilitada',       ntlm:'0xC0000072', ntlmEv:'4625', ntlm2:'0xC0000072', krb:'0x12', krbEv:'4768'},
+  {why:'Conta expirada',           ntlm:'0xC0000193', ntlmEv:'4625', ntlm2:'0xC0000193', krb:'0x12', krbEv:'4768'},
+  {why:'Senha expirada',           ntlm:'0xC0000071', ntlmEv:'4625', ntlm2:'0xC0000071', krb:'0x17', krbEv:'4771'},
+  {why:'Fora do horário',          ntlm:'0xC000006F', ntlmEv:'4625', ntlm2:'0xC000006F', krb:'0xC',  krbEv:'4768'},
+  {why:'Estação não autorizada',   ntlm:'0xC0000070', ntlmEv:'4625', ntlm2:'0xC0000070', krb:'0xC',  krbEv:'4768'},
+  {why:'Relógio fora de sincronia',ntlm:'0xC0000133', ntlmEv:'4625', ntlm2:'',           krb:'0x25', krbEv:'4771'},
 ];
 
 // ══════════════════════════════════════════════════════════════════
@@ -901,7 +1044,7 @@ function renderGraph(){
       box.className='node-box';
       box.id='node-'+ev.id;
       box.style.cssText=`background:${col.bg};color:${col.text};`;
-      box.innerHTML=`<span class="node-eid">${ev.id}</span><span class="node-short">${ev.short}</span>`;
+      box.innerHTML=`<span class="node-eid">${ev.id}</span><span class="node-short">${ev.short}</span>`+(CODES[ev.id]?`<span class="node-codes" title="Tem códigos de status">${CODES[ev.id].reduce((a,f)=>a+f.codes.length,0)}</span>`:'');
       box.onclick=()=>selectNode(ev.id);
       box.title=ev.desc;
 
@@ -999,12 +1142,13 @@ const TIMING = {
 
   // CAMADA 2 — Autenticação
   '4625-4624': {label:'Variável',  cls:'t-variable', note:'Depende do comportamento: brute force pode ter ms entre tentativas; usuário legítimo pode levar minutos.', anomaly:'5+ falhas em < 60s da mesma origem seguidas de sucesso = forte indicador de brute force.'},
-  '4625-4740': {label:'< 1 s',     cls:'t-instant',  note:'O bloqueio é aplicado imediatamente após atingir o threshold de falhas configurado na política.',        anomaly:''},
+  '4625-4740': {via:'SubStatus 0xC000006A (repetido)', label:'< 1 s',     cls:'t-instant',  note:'O bloqueio é aplicado imediatamente após atingir o threshold de falhas configurado na política.',        anomaly:''},
+  '4740-4625': {via:'Status 0xC0000234', label:'Variável',  cls:'t-variable', note:'Depois do bloqueio, novas tentativas continuam gerando 4625, agora com Status 0xC0000234.', anomaly:'Tentativas seguindo em conta já bloqueada = ferramenta automatizada que não respeita o lockout.'},
   '4740-4767': {label:'Variável',  cls:'t-variable', note:'Depende de intervenção humana (helpdesk) ou processo automatizado. Pode ser segundos ou horas.',         anomaly:'Desbloqueio imediato (< 30s) sem ticket é suspeito — pode indicar automação maliciosa.'},
   '4767-4624': {label:'< 30 s',    cls:'t-seconds',  note:'Após desbloqueio, o usuário normalmente tenta autenticar em seguida.',                                   anomaly:'Logon de origem diferente da que gerou os 4625 é suspeito.'},
   '4768-4769': {label:'1 – 5 s',   cls:'t-seconds',  note:'TGS solicitado logo após o TGT — tempo de o sistema resolver o serviço de destino.',                    anomaly:'4769 sem 4768 precedente indica ticket forjado (Golden Ticket).'},
   '4769-4770': {label:'Variável',  cls:'t-variable', note:'Renovação ocorre quando o ticket está próximo do vencimento. Padrão depende do Kerberos MaxTicketAge.',  anomaly:'Múltiplos 4769 de serviços diferentes em < 10s de uma única conta = Kerberoasting.'},
-  '4771-4768': {label:'Variável',  cls:'t-variable', note:'Após falha de pré-autenticação, nova tentativa depende do cliente.',                                     anomaly:''},
+  '4771-4768': {via:'Failure Code 0x18', label:'Variável',  cls:'t-variable', note:'Após falha de pré-autenticação, nova tentativa depende do cliente.',                                     anomaly:''},
   '4776-4624': {label:'< 1 s',     cls:'t-instant',  note:'Validação NTLM e concessão de acesso ocorrem na mesma transação.',                                       anomaly:'Muitos 4776 sem 4624 correspondente indica tentativas NTLM falhando silenciosamente.'},
   '4624-4634': {label:'Variável',  cls:'t-variable', note:'Duração da sessão — pode ser segundos (serviço) ou horas (usuário interativo).',                        anomaly:'Sessão com duração < 5s seguida de 4672 é suspeita — pode ser logon de reconhecimento.'},
   '4634-4647': {label:'< 1 s',     cls:'t-instant',  note:'4647 (iniciado pelo usuário) precede 4634 (confirmação do sistema) imediatamente.',                     anomaly:''},
@@ -1081,6 +1225,8 @@ function showDetail(eid){
   document.getElementById('d-legacy').textContent=ev.legacy||'N/A';
   document.getElementById('d-mitre').innerHTML=ev.mitre?`<a href="https://attack.mitre.org/techniques/${ev.mitre.match(/T[\d.]+/)?.[0]||''}" target="_blank" style="color:var(--blue)">${ev.mitre}</a>`:'—';
 
+  renderCodes(eid);
+
   // TIMING — gather entries where this event is source OR destination
   const timingEntries=[];
   const succs=(ev.succs||[]).filter(s=>evtMap[s]);
@@ -1108,6 +1254,7 @@ function showDetail(eid){
         <span class="timing-eid">${t.dir==='→'?eid:t.otherId} ${t.dir} ${t.dir==='→'?t.otherId:eid}</span>
         <span class="timing-badge ${t.cls}">${t.label}</span>
       </div>
+      ${t.via?`<div class="timing-via">via ${t.via}</div>`:''}
       <div class="timing-note">${t.note}</div>
       ${t.anomaly?`<div class="timing-anomaly">⚠ ${t.anomaly}</div>`:''}
     </div>
@@ -1123,6 +1270,54 @@ function showDetail(eid){
   predLbl.style.display=preds.length?'block':'none';
   predList.innerHTML=preds.map(p=>`<div class="related-item" onclick="selectNode('${p}')"><span class="related-eid">${p}</span> ${evtMap[p].short}</div>`).join('');
 }
+
+
+// ══════════════════════════════════════════════════════════════════
+// STATUS CODES — painel, busca e matriz NTLM × Kerberos
+// ══════════════════════════════════════════════════════════════════
+function esc(t){return String(t).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));}
+function codeMatches(eid,q){
+  const fields=CODES[eid]; if(!fields||!q) return false;
+  return fields.some(f=>f.codes.some(x=>x.c.toLowerCase()===q||(q.length>=4&&(x.c.toLowerCase().includes(q)||x.m.toLowerCase().includes(q)))));
+}
+function renderCodes(eid,focusCode){
+  const lbl=document.getElementById('d-codes-lbl'), box=document.getElementById('d-codes');
+  const fields=CODES[eid];
+  lbl.style.display=fields?'block':'none';
+  if(!fields){box.innerHTML='';return;}
+  const q=(focusCode||searchFilter||'').toLowerCase();
+  box.innerHTML=fields.map((f,i)=>{
+    const hasHit=q&&f.codes.some(x=>x.c.toLowerCase()===q);
+    const collapsed=f.collapsed&&!hasHit;
+    return `<div class="code-field${collapsed?' collapsed':''}" id="cf-${i}">
+      <div class="code-field-name" onclick="this.parentElement.classList.toggle('collapsed')">${esc(f.f)} <span class="chev">${f.codes.length} códigos ▾</span></div>
+      <div class="code-field-hint">${esc(f.hint)}</div>
+      <div class="code-list">${f.codes.map(x=>`
+        <div class="code-item sev-${x.sev}${q&&x.c.toLowerCase()===q?' hit':''}">
+          <div class="code-top"><span class="code-val">${esc(x.c)}</span><span class="code-mean">${esc(x.m)}</span></div>
+          ${x.n?`<div class="code-note">${esc(x.n)}</div>`:''}
+        </div>`).join('')}</div>
+    </div>`;
+  }).join('');
+  const hit=box.querySelector('.code-item.hit');
+  if(hit) setTimeout(()=>hit.scrollIntoView({block:'nearest',behavior:'smooth'}),50);
+}
+function openCode(eid,code){
+  closeRosetta();
+  if(selectedNode!==eid) selectNode(eid);
+  document.getElementById('detail-panel').classList.remove('hidden');
+  renderCodes(eid,code);
+  document.getElementById('node-'+eid)?.scrollIntoView({block:'center',inline:'center',behavior:'smooth'});
+}
+function renderRosetta(){
+  const cell=(c,ev)=>c?`<span class="ros-cell" onclick="openCode('${ev}','${c}')">${c}</span>`:'<span class="ros-na">—</span>';
+  document.getElementById('ros-table').innerHTML=
+    `<tr><th>Motivo</th><th>4625 · Status/SubStatus</th><th>4776 · Error Code</th><th>Kerberos · 4768/4771</th></tr>`+
+    ROSETTA.map(r=>`<tr><td>${esc(r.why)}</td><td>${cell(r.ntlm,r.ntlmEv)}</td><td>${cell(r.ntlm2,'4776')}</td><td>${cell(r.krb,r.krbEv)} <span class="ros-ev">${r.krbEv}</span></td></tr>`).join('');
+}
+function openRosetta(){renderRosetta();document.getElementById('rosetta').classList.remove('hidden');}
+function closeRosetta(){document.getElementById('rosetta').classList.add('hidden');}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeRosetta();});
 
 // ══════════════════════════════════════════════════════════════════
 // SEARCH & FILTER
@@ -1153,7 +1348,7 @@ function applyFilter(){
       box.style.pointerEvents='';
       return;
     }
-    const match = eid.includes(searchFilter)||ev.desc.toLowerCase().includes(searchFilter)||ev.short.toLowerCase().includes(searchFilter)||(ev.mitre&&ev.mitre.toLowerCase().includes(searchFilter));
+    const match = eid.includes(searchFilter)||ev.desc.toLowerCase().includes(searchFilter)||ev.short.toLowerCase().includes(searchFilter)||(ev.mitre&&ev.mitre.toLowerCase().includes(searchFilter))||codeMatches(eid,searchFilter);
     box.style.opacity=match?'1':'0.1';
     box.style.pointerEvents=match?'':'none';
   });
