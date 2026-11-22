@@ -143,7 +143,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 /* SCENARIO STEP BADGE on node */
 .node-step{
   position:absolute;top:-8px;left:-8px;
-  width:18px;height:18px;border-radius:50%;
+  min-width:18px;height:18px;padding:0 4px;border-radius:9px;
   font-size:9px;font-weight:700;
   display:flex;align-items:center;justify-content:center;
   color:#fff;border:1.5px solid rgba(255,255,255,0.6);
@@ -201,6 +201,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .src-tag{font-size:10px;padding:2px 8px;border-radius:20px;display:inline-block;background:var(--bg3);color:var(--text);border:0.5px solid var(--border2);margin-right:6px;}
 .node-src{position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);font-size:8px;font-weight:600;padding:0 4px;border-radius:6px;background:var(--bg);color:var(--text2);border:0.5px solid var(--border2);pointer-events:none;white-space:nowrap;}
 .node-box.src-off{opacity:0.12;pointer-events:none;}
+.sc-title{font-size:16px;font-weight:500;}
+.sc-step{display:flex;gap:8px;font-size:11px;padding:6px 8px;background:var(--bg2);border-radius:var(--radius);border:0.5px solid var(--border);cursor:pointer;}
+.sc-step:hover{background:var(--bg3);}
+.sc-num{min-width:18px;height:18px;border-radius:9px;color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.sc-body{display:flex;flex-direction:column;gap:2px;flex:1;}
+.sc-head{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.sc-note{font-size:10px;color:var(--text3);line-height:1.35;}
+.req-item{font-size:11px;padding:5px 8px;background:var(--bg2);border-radius:var(--radius);border:0.5px solid var(--border);line-height:1.4;}
+.req-ev{font-family:'Courier New',monospace;color:var(--text3);font-size:10px;}
+.req-gap{border-left:3px solid #BA7517;border-radius:0;}
 /* ROSETTA MODAL */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:100;display:flex;align-items:center;justify-content:center;padding:1rem;}
 .modal-bg.hidden{display:none;}
@@ -278,9 +288,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
   <div class="detail-panel hidden" id="detail-panel">
     <div class="detail-close"><button class="btn" onclick="closeDetail()">✕ Fechar</button></div>
+    <div id="ev-content" style="display:flex;flex-direction:column;gap:0.75rem">
+    <button class="btn" id="sc-back" style="display:none;align-self:flex-start" onclick="const sc=SCENARIOS.find(x=>x.id===activeScenario); if(sc){selectedNode=null;updateNodeStyles();applyScenarioHighlight(sc);showScenarioPanel(sc);drawCrossArrows();}">← Voltar ao cenário</button>
     <div class="detail-eid" id="d-eid"></div>
     <div class="detail-desc" id="d-desc"></div>
     <div id="d-crit"></div>
+    <div class="code-note" id="d-critnote" style="display:none;font-size:11px"></div>
     <div class="detail-section">Onde é gerado</div><div class="detail-val" id="d-src"></div>
     <div class="detail-section">Log</div><div class="detail-val" id="d-log"></div>
     <div class="detail-section">Pré-requisito de auditoria</div><div class="detail-val" id="d-audit"></div>
@@ -294,6 +307,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <div class="related-list" id="d-successors"></div>
     <div class="detail-section" id="d-pred-lbl" style="display:none">Eventos que podem preceder</div>
     <div class="related-list" id="d-predecessors"></div>
+    </div>
+    <div id="sc-content" style="display:none;flex-direction:column;gap:0.75rem"></div>
   </div>
 </div>
 
@@ -343,8 +358,8 @@ const LAYERS = [
     desc:"Quem tenta entrar, como e com qual resultado",
     events:[
       {id:"4625", short:"Logon Failed",  desc:"Uma conta falhou ao fazer logon",                               crit:"Low",   log:"Security",legacy:"529-537,539",mitre:"T1110 – Brute Force",   succs:["4740","4625","4624"]},
-      {id:"4740", short:"Locked Out",    desc:"Uma conta de usuário foi bloqueada",                            crit:"Medium",log:"Security",legacy:"539",        mitre:"T1110 – Brute Force",   succs:["4767","4625"]},
-      {id:"4767", short:"Unlocked",      desc:"Uma conta de usuário foi desbloqueada",                        crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:["4624"]},
+      {id:"4740", short:"Locked Out",    desc:"Uma conta de usuário foi bloqueada",                            crit:"Medium",log:"Security",legacy:"644",        mitre:"T1110 – Brute Force",   succs:["4767","4625"]},
+      {id:"4767", short:"Unlocked",      desc:"Uma conta de usuário foi desbloqueada",                        crit:"Low",   log:"Security",legacy:"671",         mitre:"",                      succs:["4624"]},
       {id:"4624", short:"Logon OK",      desc:"Uma conta fez logon com sucesso",                              crit:"Low",   log:"Security",legacy:"528,540",     mitre:"T1078 – Valid Accounts", succs:["4672","4634","4648","4688","4778","5140"]},
       {id:"4634", short:"Logoff",        desc:"Uma conta fez logoff",                                         crit:"Low",   log:"Security",legacy:"538",         mitre:"",                      succs:["4647"]},
       {id:"4647", short:"User Logoff",   desc:"Logoff iniciado pelo usuário",                                 crit:"Low",   log:"Security",legacy:"551",         mitre:"",                      succs:["4634"]},
@@ -353,10 +368,10 @@ const LAYERS = [
       {id:"4768", short:"TGT Request",   desc:"Ticket de autenticação Kerberos (TGT) foi solicitado",         crit:"Low",   log:"Security",legacy:"672",         mitre:"T1558 – Kerberos",      succs:["4769","4624"]},
       {id:"4769", short:"TGS Request",   desc:"Ticket de serviço Kerberos (TGS) foi solicitado",             crit:"Low",   log:"Security",legacy:"673",         mitre:"T1558 – Kerberos",      succs:["4624","4770"]},
       {id:"4770", short:"TGS Renew",     desc:"Ticket de serviço Kerberos renovado",                         crit:"Low",   log:"Security",legacy:"674",         mitre:"",                      succs:["4769"]},
-      {id:"4771", short:"Kerb PreAuth",  desc:"Pré-autenticação Kerberos falhou",                            crit:"Low",   log:"Security",legacy:"N/A",         mitre:"T1558 – Kerberos",      succs:["4768","4625"]},
+      {id:"4771", short:"Kerb PreAuth",  desc:"Pré-autenticação Kerberos falhou",                            crit:"Low",   log:"Security",legacy:"675",         mitre:"T1558 – Kerberos",      succs:["4768","4625"]},
       {id:"4772", short:"TGT Failed",    desc:"Solicitação de ticket de autenticação Kerberos falhou",        crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:["4625"]},
       {id:"4773", short:"TGS Failed",    desc:"Solicitação de ticket de serviço Kerberos falhou",            crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
-      {id:"4776", short:"NTLM Validate", desc:"DC tentou validar as credenciais de uma conta via NTLM",      crit:"Low",   log:"Security",legacy:"680",         mitre:"T1110 – Brute Force",   succs:["4624","4625"]},
+      {id:"4776", short:"NTLM Validate", desc:"DC tentou validar as credenciais de uma conta via NTLM",      crit:"Low",   log:"Security",legacy:"680,681",         mitre:"T1110 – Brute Force",   succs:["4624","4625"]},
       {id:"4777", short:"NTLM Failed",   desc:"DC falhou ao validar as credenciais de uma conta",            crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:["4625"]},
       {id:"4820", short:"TGT Denied",    desc:"TGT Kerberos negado – dispositivo não atende restrições",     crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
       {id:"4821", short:"TGS Denied",    desc:"Ticket de serviço Kerberos negado – restrições de acesso",   crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
@@ -403,27 +418,27 @@ const LAYERS = [
       {id:"4798", short:"LocalGrp Enum", desc:"Associação em grupo local de um usuário foi enumerada",   crit:"Low",   log:"Security",legacy:"N/A",          mitre:"T1069 – Grp Discovery", succs:[]},
       {id:"4799", short:"SecGrp Enum",   desc:"Associação em grupo local com segurança habilitada enumerada",crit:"Low",log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
       {id:"4727", short:"Global Grp+",   desc:"Um grupo global com segurança habilitada foi criado",      crit:"Medium",log:"Security",legacy:"631",          mitre:"",                      succs:["4728"]},
-      {id:"4728", short:"Global Mbr+",   desc:"Membro adicionado a grupo global com segurança habilitada",crit:"Medium",log:"Security",legacy:"636",         mitre:"T1098 – Acct Manip.",   succs:["4624"]},
-      {id:"4729", short:"Global Mbr-",   desc:"Membro removido de grupo global com segurança habilitada", crit:"Low",  log:"Security",legacy:"637",          mitre:"",                      succs:[]},
-      {id:"4730", short:"Global Grp-",   desc:"Grupo global com segurança habilitada foi deletado",       crit:"Low",  log:"Security",legacy:"638",          mitre:"",                      succs:[]},
-      {id:"4731", short:"Local Grp+",    desc:"Grupo local com segurança habilitada foi criado",          crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:["4732"]},
+      {id:"4728", short:"Global Mbr+",   desc:"Membro adicionado a grupo global com segurança habilitada",crit:"Medium",log:"Security",legacy:"632",         mitre:"T1098 – Acct Manip.",   succs:["4624"]},
+      {id:"4729", short:"Global Mbr-",   desc:"Membro removido de grupo global com segurança habilitada", crit:"Low",  log:"Security",legacy:"633",          mitre:"",                      succs:[]},
+      {id:"4730", short:"Global Grp-",   desc:"Grupo global com segurança habilitada foi deletado",       crit:"Low",  log:"Security",legacy:"634",          mitre:"",                      succs:[]},
+      {id:"4731", short:"Local Grp+",    desc:"Grupo local com segurança habilitada foi criado",          crit:"Low",  log:"Security",legacy:"635",          mitre:"",                      succs:["4732"]},
       {id:"4732", short:"Local Mbr+",    desc:"Membro adicionado a grupo local com segurança habilitada", crit:"Medium",log:"Security",legacy:"636",         mitre:"T1098 – Acct Manip.",   succs:["4624"]},
-      {id:"4733", short:"Local Mbr-",    desc:"Membro removido de grupo local com segurança habilitada",  crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
-      {id:"4734", short:"Local Grp-",    desc:"Grupo local com segurança habilitada foi deletado",        crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"4733", short:"Local Mbr-",    desc:"Membro removido de grupo local com segurança habilitada",  crit:"Low",  log:"Security",legacy:"637",          mitre:"",                      succs:[]},
+      {id:"4734", short:"Local Grp-",    desc:"Grupo local com segurança habilitada foi deletado",        crit:"Low",  log:"Security",legacy:"638",          mitre:"",                      succs:[]},
       {id:"4735", short:"Local Grp Chg", desc:"Grupo local com segurança habilitada foi alterado",        crit:"Medium",log:"Security",legacy:"639",         mitre:"",                      succs:[]},
       {id:"4737", short:"Global Grp Chg",desc:"Grupo global com segurança habilitada foi alterado",       crit:"Medium",log:"Security",legacy:"641",         mitre:"",                      succs:[]},
       {id:"4754", short:"Univ Grp+",     desc:"Grupo universal com segurança habilitada foi criado",      crit:"Medium",log:"Security",legacy:"658",         mitre:"",                      succs:["4756"]},
       {id:"4755", short:"Univ Grp Chg",  desc:"Grupo universal com segurança habilitada foi alterado",    crit:"Medium",log:"Security",legacy:"659",         mitre:"",                      succs:[]},
-      {id:"4756", short:"Univ Mbr+",     desc:"Membro adicionado a grupo universal com segurança habilitada",crit:"Medium",log:"Security",legacy:"N/A",      mitre:"T1098 – Acct Manip.",   succs:[]},
-      {id:"4757", short:"Univ Mbr-",     desc:"Membro removido de grupo universal com segurança habilitada",crit:"Low", log:"Security",legacy:"N/A",         mitre:"",                      succs:[]},
-      {id:"4758", short:"Univ Grp-",     desc:"Grupo universal com segurança habilitada foi deletado",    crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"4756", short:"Univ Mbr+",     desc:"Membro adicionado a grupo universal com segurança habilitada",crit:"Medium",log:"Security",legacy:"660",      mitre:"T1098 – Acct Manip.",   succs:[]},
+      {id:"4757", short:"Univ Mbr-",     desc:"Membro removido de grupo universal com segurança habilitada",crit:"Low", log:"Security",legacy:"661",         mitre:"",                      succs:[]},
+      {id:"4758", short:"Univ Grp-",     desc:"Grupo universal com segurança habilitada foi deletado",    crit:"Low",  log:"Security",legacy:"662",          mitre:"",                      succs:[]},
       {id:"4764", short:"Grp Type Chg",  desc:"Tipo de grupo foi alterado",                               crit:"Medium",log:"Security",legacy:"668",         mitre:"",                      succs:[]},
       {id:"4765", short:"SID Hist Add",  desc:"SID History foi adicionado a uma conta",                   crit:"High", log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
       {id:"4766", short:"SID Hist Fail", desc:"Tentativa de adicionar SID History a uma conta falhou",    crit:"High", log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
       {id:"4780", short:"Admin ACL Set", desc:"ACL definida em contas membros de grupos de administradores",crit:"Medium",log:"Security",legacy:"684",        mitre:"",                      succs:[]},
-      {id:"4741", short:"Comp Acct+",    desc:"Uma conta de computador foi criada",                       crit:"Low",  log:"Security",legacy:"N/A",          mitre:"T1136 – Create Account", succs:["4742"]},
-      {id:"4742", short:"Comp Acct Chg", desc:"Uma conta de computador foi alterada",                    crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
-      {id:"4743", short:"Comp Acct-",    desc:"Uma conta de computador foi deletada",                    crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"4741", short:"Comp Acct+",    desc:"Uma conta de computador foi criada",                       crit:"Low",  log:"Security",legacy:"645",          mitre:"T1136 – Create Account", succs:["4742"]},
+      {id:"4742", short:"Comp Acct Chg", desc:"Uma conta de computador foi alterada",                    crit:"Low",  log:"Security",legacy:"646",          mitre:"",                      succs:[]},
+      {id:"4743", short:"Comp Acct-",    desc:"Uma conta de computador foi deletada",                    crit:"Low",  log:"Security",legacy:"647",          mitre:"",                      succs:[]},
       {id:"4739", short:"Domain Policy", desc:"Política de domínio foi alterada",                          crit:"Medium",log:"Security",legacy:"643",         mitre:"",                      succs:[]},
       {id:"4713", short:"Kerb Policy",   desc:"Política Kerberos foi alterada",                            crit:"Medium",log:"Security",legacy:"617",         mitre:"T1558 – Kerberos",      succs:[]},
       {id:"4714", short:"EFS Policy",    desc:"Política de recuperação de dados criptografados foi alterada",crit:"Medium",log:"Security",legacy:"618",       mitre:"",                      succs:[]},
@@ -648,6 +663,15 @@ const ROSETTA = [
 // ══════════════════════════════════════════════════════════════════
 // ONDE O EVENTO É GERADO
 // ══════════════════════════════════════════════════════════════════
+const CRIT_NOTE = {
+  '4625':'Um 4625 isolado é rotina. A criticidade vem do padrão: volume, variedade de contas, SubStatus e origem.',
+  '4624':'Rotina. Ganha peso pelo Logon Type, pela origem e pelo horário — e pelo que vem depois na mesma sessão.',
+  '4771':'Isolado é rotina. Falhas 0x18 em muitas contas a partir da mesma origem = password spray.',
+  '4769':'Rotina em volume alto. Peso vem do Encryption Type (0x17) e de muitos SPNs distintos por conta em pouco tempo.',
+  '4688':'A criticidade depende do processo, da linha de comando e do processo pai, não do evento em si.',
+  '4776':'Gerado também no sucesso. Avalie o Error Code e o volume por origem.',
+  '4662':'Volume alto e genérico. Ganha peso com GUIDs específicos em Properties (ex.: replicação = DCSync).',
+};
 const SRC_LABEL = {
   dc:     {tag:'DC',        txt:'Controlador de domínio'},
   dclocal:{tag:'DC / host', txt:'DC para contas de domínio; o próprio host para contas locais'},
@@ -774,68 +798,60 @@ let mitreFilter = '';
 // ══════════════════════════════════════════════════════════════════
 const SCENARIOS = [
   {
-    id:'brute-force',
-    name:'Brute Force → Acesso',
-    color:'#A32D2D',
-    mitre:'T1110',
+    id:'brute-force', name:'Brute Force → Acesso', color:'#A32D2D', mitre:'T1110',
     steps:['4625','4625','4740','4767','4624','4672','4688'],
+    hosts:['target','target','dclocal','dclocal','target','target','host'],
+    notes:['SubStatus 0xC000006A','Repetição até o limite de bloqueio','Caller Computer Name aponta a máquina de origem','Desbloqueio (helpdesk ou automação)','Sucesso — confira se a origem é a mesma dos 4625','Conta com privilégios especiais','Execução pós-acesso'],
     desc:'Múltiplas falhas de autenticação seguidas de bloqueio, desbloqueio e eventual acesso privilegiado com execução de processo.'
   },
   {
-    id:'pass-the-hash',
-    name:'Pass-the-Hash',
-    color:'#854F0B',
-    mitre:'T1550.002',
-    steps:['4624','4648','4672','4688','4697','7045','7036'],
-    desc:'Logon com credenciais explícitas via hash NTLM, escalada de privilégio, criação de processo e instalação de serviço persistente.'
+    id:'pass-the-hash', name:'Pass-the-Hash', color:'#854F0B', mitre:'T1550.002',
+    steps:['4624','4776','4624','4672','4697','7045','4688'],
+    hosts:['origin','dc','target','target','target','target','target'],
+    notes:['Logon Type 9, Logon Process seclogo (sekurlsa::pth)','Validação NTLM da conta usada (conta de domínio)','Logon Type 3, Authentication Package NTLM','Conta administrativa no alvo','Serviço instalado (log Security)','Mesmo serviço no log System','Processo filho de services.exe'],
+    desc:'O hash é injetado numa sessão na origem e usado via NTLM para logon de rede no alvo, seguido de execução remota por serviço. Os eventos se dividem entre origem, DC e destino.'
   },
   {
-    id:'kerberoasting',
-    name:'Kerberoasting',
-    color:'#533489',
-    mitre:'T1558.003',
+    id:'kerberoasting', name:'Kerberoasting', color:'#533489', mitre:'T1558.003',
     steps:['4768','4769','4769','4624','4688'],
-    desc:'TGT seguido de múltiplas solicitações TGS para diferentes serviços (coleta de hashes) e eventual acesso.'
+    hosts:['dc','dc','dc','target','host'],
+    notes:['TGT da conta já comprometida','TGS com Ticket Encryption Type 0x17 (RC4)','Vários SPNs distintos em poucos segundos','Após quebra offline (sem telemetria), logon com a conta de serviço','Uso da conta de serviço'],
+    desc:'Com uma conta qualquer do domínio, o atacante pede tickets de serviço (de preferência RC4) para quebrar a senha das contas de serviço offline.'
   },
   {
-    id:'dcsync',
-    name:'DCSync',
-    color:'#185FA5',
-    mitre:'T1003.006',
-    steps:['4624','4672','4662','4928','4932','4934','4933'],
-    desc:'Logon privilegiado, operação em objeto AD, estabelecimento de contexto de replicação e dump de atributos (credenciais).'
+    id:'dcsync', name:'DCSync', color:'#185FA5', mitre:'T1003.006',
+    steps:['4624','4672','4662'],
+    hosts:['dc','dc','dc'],
+    notes:['Logon Type 3 no DC a partir de host que não é DC','Conta com privilégio de replicação','Properties com 1131f6aa-… / 1131f6ad-… (DS-Replication-Get-Changes[-All]) vindo de conta que não é de DC'],
+    desc:'Conta com direito de replicação pede ao DC, via DRSUAPI, os segredos das contas. O sinal está no 4662 com os GUIDs de replicação; replicação legítima vem só de contas de computador de DCs.'
   },
   {
-    id:'lateral-psexec',
-    name:'Movimento lateral (PsExec)',
-    color:'#993C1D',
-    mitre:'T1021.002',
-    steps:['4624','5140','5145','7045','4688'],
-    desc:'Logon de rede no alvo, acesso ao ADMIN$, cópia do binário, criação de serviço e execução — tudo no host de destino.'
-  },
-  {
-    id:'persistence-task',
-    name:'Persistência via Task',
-    color:'#0F6E56',
-    mitre:'T1053',
+    id:'persistence-task', name:'Persistência via Task', color:'#0F6E56', mitre:'T1053',
     steps:['4624','4688','4698','4700','4702','4688'],
+    hosts:['target','host','host','host','host','host'],
+    notes:['Acesso inicial','Processo que cria a tarefa (schtasks, PowerShell)','Tarefa criada — veja o XML em TaskContent','Tarefa habilitada','Tarefa alterada','Execução disparada pelo trigger'],
     desc:'Após acesso, processo cria tarefa agendada, habilita e atualiza para execução persistente.'
   },
   {
-    id:'cover-tracks',
-    name:'Cobertura de Rastros',
-    color:'#5F5E5A',
-    mitre:'T1070',
+    id:'cover-tracks', name:'Cobertura de Rastros', color:'#5F5E5A', mitre:'T1070',
     steps:['4688','4719','1102','104'],
+    hosts:['host','host','host','host'],
+    notes:['auditpol, wevtutil ou similar','Política de auditoria alterada','Log Security limpo','Log System limpo'],
     desc:'Processo altera política de auditoria para desabilitar logging e em seguida limpa os logs de segurança e sistema.'
   },
   {
-    id:'ransomware-obj',
-    name:'Ransomware – Objetos',
-    color:'#A32D2D',
-    mitre:'T1486',
+    id:'ransomware-obj', name:'Ransomware – Objetos', color:'#A32D2D', mitre:'T1486',
     steps:['4624','4688','4656','4663','4670','4660','4719','1102'],
+    hosts:['target','host','host','host','host','host','host','host'],
+    notes:['Acesso','Binário do ransomware','Handles em massa','Leitura/escrita em massa (requer SACL)','Permissões alteradas','Exclusão de originais','Auditoria reduzida','Logs limpos'],
     desc:'Após acesso, processo abre handles em massa, acessa e modifica permissões de objetos, deleta-os e cobre rastros.'
+  },
+  {
+    id:'lateral-psexec', name:'Movimento lateral (PsExec)', color:'#993C1D', mitre:'T1021.002',
+    steps:['4624','5140','5145','7045','4688'],
+    hosts:['target','target','target','target','target'],
+    notes:['Logon Type 3 vindo da origem','Acesso a ADMIN$','Gravação de PSEXESVC.exe (ou similar)','Serviço criado','Comando executado como filho do serviço'],
+    desc:'Logon de rede no alvo, acesso ao ADMIN$, cópia do binário, criação de serviço e execução — tudo no host de destino.'
   },
 ];
 
@@ -874,6 +890,7 @@ function toggleScenario(id){
   selectedNode=null;
   closeDetailSilent();
   applyScenarioHighlight(sc);
+  showScenarioPanel(sc);
   drawCrossArrows();
 }
 
@@ -884,6 +901,7 @@ function clearScenario(){
     b.style.background='';
   });
   document.getElementById('scenario-clear').style.display='none';
+  if(document.getElementById('sc-content').style.display!=='none'){ document.getElementById('detail-panel').classList.add('hidden'); document.getElementById('sc-content').style.display='none'; }
   // remove step badges
   document.querySelectorAll('.node-step').forEach(el=>el.remove());
   document.querySelectorAll('.node-box').forEach(b=>{
@@ -907,15 +925,14 @@ function applyScenarioHighlight(sc){
     }
   });
   // add numbered badges in order (deduplicated display)
-  const seen={};
-  sc.steps.forEach((eid,idx)=>{
-    if(seen[eid]) return;
-    seen[eid]=true;
+  const idxs={};
+  sc.steps.forEach((eid,idx)=>{(idxs[eid]=idxs[eid]||[]).push(idx+1);});
+  Object.keys(idxs).forEach(eid=>{
     const box = document.getElementById('node-'+eid);
     if(!box) return;
     const badge = document.createElement('div');
     badge.className='node-step';
-    badge.textContent=idx+1;
+    badge.textContent=idxs[eid].join('·');
     badge.style.background=sc.color;
     box.style.position='relative';
     box.appendChild(badge);
@@ -1274,7 +1291,7 @@ const TIMING = {
   '4740-4625': {via:'Status 0xC0000234', label:'Variável',  cls:'t-variable', note:'Depois do bloqueio, novas tentativas continuam gerando 4625, agora com Status 0xC0000234.', anomaly:'Tentativas seguindo em conta já bloqueada = ferramenta automatizada que não respeita o lockout.'},
   '4740-4767': {label:'Variável',  cls:'t-variable', note:'Depende de intervenção humana (helpdesk) ou processo automatizado. Pode ser segundos ou horas.',         anomaly:'Desbloqueio imediato (< 30s) sem ticket é suspeito — pode indicar automação maliciosa.'},
   '4767-4624': {label:'< 30 s',    cls:'t-seconds',  note:'Após desbloqueio, o usuário normalmente tenta autenticar em seguida.',                                   anomaly:'Logon de origem diferente da que gerou os 4625 é suspeito.'},
-  '4768-4769': {label:'1 – 5 s',   cls:'t-seconds',  note:'TGS solicitado logo após o TGT — tempo de o sistema resolver o serviço de destino.',                    anomaly:'4769 sem 4768 precedente indica ticket forjado (Golden Ticket).'},
+  '4768-4769': {label:'1 – 5 s',   cls:'t-seconds',  note:'TGS solicitado logo após o TGT — tempo de o sistema resolver o serviço de destino.',                    anomaly:'4769 sem nenhum 4768 da mesma conta em qualquer DC durante a validade do TGT (padrão 10 h) sugere ticket forjado (Golden Ticket). Olhar só uma janela curta ou um único DC gera falso positivo.'},
   '4769-4770': {label:'Variável',  cls:'t-variable', note:'Renovação ocorre quando o ticket está próximo do vencimento. Padrão depende do Kerberos MaxTicketAge.',  anomaly:'Múltiplos 4769 de serviços diferentes em < 10s de uma única conta = Kerberoasting.'},
   '4771-4768': {via:'Failure Code 0x18', label:'Variável',  cls:'t-variable', note:'Após falha de pré-autenticação, nova tentativa depende do cliente.',                                     anomaly:''},
   '4776-4624': {label:'< 1 s',     cls:'t-instant',  note:'Validação NTLM e concessão de acesso ocorrem na mesma transação.',                                       anomaly:'Muitos 4776 sem 4624 correspondente indica tentativas NTLM falhando silenciosamente.'},
@@ -1350,11 +1367,15 @@ function showDetail(eid){
   if(!ev) return;
   const col = critColor(ev.crit);
   document.getElementById('detail-panel').classList.remove('hidden');
+  document.getElementById('ev-content').style.display='flex';
+  document.getElementById('sc-content').style.display='none';
+  document.getElementById('sc-back').style.display=activeScenario?'':'none';
   document.getElementById('d-eid').textContent='Event ID '+eid;
   document.getElementById('d-eid').style.color=col.bg;
   document.getElementById('d-desc').textContent=ev.desc;
   document.getElementById('d-crit').innerHTML=critBadge(ev.crit)+(ev.mitre?`<span class="badge badge-info" style="margin-left:4px">${ev.mitre}</span>`:'');
   document.getElementById('d-log').textContent=ev.log;
+  const cn=document.getElementById('d-critnote'); cn.textContent=CRIT_NOTE[eid]||''; cn.style.display=CRIT_NOTE[eid]?'block':'none';
   const sk=SRC[eid]||'host';
   document.getElementById('d-src').innerHTML=`<span class="src-tag">${SRC_LABEL[sk].tag}</span>${SRC_LABEL[sk].txt}`;
   document.getElementById('d-audit').textContent=AUDIT[eid]||'Não mapeado — consulte a documentação do evento';
@@ -1463,6 +1484,45 @@ function applySrcFilter(v){
     box.classList.toggle('src-off', !!v && (SRC[eid]||'host')!==v);
   });
   requestAnimationFrame(drawCrossArrows);
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// PAINEL DO CENÁRIO — passos por host + requisitos de detecção
+// ══════════════════════════════════════════════════════════════════
+function showScenarioPanel(sc){
+  const hostOf=(i)=>(sc.hosts&&sc.hosts[i])||SRC[sc.steps[i]]||'host';
+  const steps=sc.steps.map((eid,i)=>{
+    const ev=evtMap[eid]; const h=SRC_LABEL[hostOf(i)];
+    return `<div class="sc-step" onclick="selectNode('${eid}')">
+      <span class="sc-num" style="background:${sc.color}">${i+1}</span>
+      <div class="sc-body">
+        <div class="sc-head"><span class="related-eid">${eid}</span><span>${ev?esc(ev.short):''}</span><span class="src-tag" title="${esc(h.txt)}">${h.tag}</span></div>
+        ${sc.notes&&sc.notes[i]?`<div class="sc-note">${esc(sc.notes[i])}</div>`:''}
+      </div></div>`;
+  }).join('');
+  // requisitos: hosts de coleta e subcategorias de auditoria
+  const hostSet={}; sc.steps.forEach((eid,i)=>{(hostSet[hostOf(i)]=hostSet[hostOf(i)]||new Set()).add(eid);});
+  const audSet={}; const gaps=[];
+  [...new Set(sc.steps)].forEach(eid=>{const a=AUDIT[eid]; if(a)(audSet[a]=audSet[a]||[]).push(eid); else gaps.push(eid);});
+  const hostsHtml=Object.entries(hostSet).map(([k,v])=>`<div class="req-item"><span class="src-tag">${SRC_LABEL[k].tag}</span>${esc(SRC_LABEL[k].txt)}<div class="req-ev">${[...v].join(', ')}</div></div>`).join('');
+  const audHtml=Object.entries(audSet).map(([a,ids])=>`<div class="req-item">${esc(a)}<div class="req-ev">${ids.join(', ')}</div></div>`).join('')
+    + gaps.map(e=>`<div class="req-item req-gap">Subcategoria não mapeada<div class="req-ev">${e}</div></div>`).join('');
+  const c=document.getElementById('sc-content');
+  c.innerHTML=`
+    <div class="sc-title" style="color:${sc.color}">${esc(sc.name)}</div>
+    <div class="detail-desc">${esc(sc.desc)}</div>
+    <div><a href="https://attack.mitre.org/techniques/${sc.mitre.replace('.','/')}" target="_blank" class="badge badge-info" style="text-decoration:none">${sc.mitre}</a></div>
+    <div class="detail-section">Passos e onde acontecem</div>
+    <div class="related-list">${steps}</div>
+    <div class="detail-section">O que preciso para detectar</div>
+    <div class="code-note" style="font-size:11px">Onde coletar</div>
+    <div class="related-list">${hostsHtml}</div>
+    <div class="code-note" style="font-size:11px">Auditoria a habilitar</div>
+    <div class="related-list">${audHtml}</div>`;
+  document.getElementById('ev-content').style.display='none';
+  c.style.display='flex';
+  document.getElementById('detail-panel').classList.remove('hidden');
 }
 
 // ══════════════════════════════════════════════════════════════════
