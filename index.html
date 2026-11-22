@@ -243,9 +243,10 @@ body.theme-light .node-box.dimmed .node-codes,body.theme-light .node-box.dimmed 
 body.theme-light .node-box.src-off .node-codes,body.theme-light .node-box.src-off .node-src,
 body.theme-light .node-box.faded .node-codes,body.theme-light .node-box.faded .node-src{opacity:.6;}
 body.theme-light .node-box.faded,body.theme-light .node-box.src-off{background:color-mix(in srgb, var(--nb) 8%, #ffffff) !important;color:#6f6f69 !important;}
-.guide-card{display:block;margin:16px 0.75rem 8px;padding:10px 11px;border:0.5px solid var(--border2);border-left:3px solid var(--blue);border-radius:0;background:var(--bg2);text-decoration:none;}
+.guide-card{display:block;margin:0 0.75rem 14px;padding:10px 11px;border:0.5px solid var(--border2);border-left:3px solid var(--blue);border-radius:0;background:var(--bg2);text-decoration:none;}
 .guide-card:hover{background:var(--bg3);}
-.guide-t{display:block;font-size:12px;font-weight:500;color:var(--blue);}
+.guide-t{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:var(--blue);}
+.guide-ico{flex-shrink:0;}
 .guide-d{display:block;font-size:10.5px;line-height:1.35;color:var(--text2);margin-top:3px;}
 
 /* ═══ CELULAR ═══ */
@@ -266,13 +267,14 @@ body.theme-light .node-box.faded,body.theme-light .node-box.src-off{background:c
   #scenario-btns{display:flex;flex-wrap:nowrap;gap:6px;}
   .scenario-btn,.scenario-clear{flex-shrink:0;}
   .workspace{flex-direction:column;}
-  .layer-sidebar{width:auto;display:flex;align-items:center;overflow-x:auto;overflow-y:hidden;padding:.4rem .5rem;border-right:0;border-bottom:.5px solid var(--border);flex-shrink:0;}
+  .layer-sidebar{width:auto;display:flex;flex-wrap:wrap;align-items:center;overflow:visible;padding:.45rem .5rem;border-right:0;border-bottom:.5px solid var(--border);flex-shrink:0;}
   .layer-sidebar h3,.layer-sidebar>p{display:none;}
-  #layer-nav{display:flex;gap:6px;}
+  #layer-nav{display:flex;gap:6px;flex:1 1 100%;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px;}
   .layer-btn{width:auto;white-space:nowrap;border:.5px solid var(--border2);border-radius:20px;padding:5px 11px;}
   .layer-btn.active{border-color:var(--blue);}
-  .guide-card{margin:0 0 0 6px;white-space:nowrap;padding:5px 11px;border-radius:20px;border-left-width:.5px;flex-shrink:0;}
-  .guide-d{display:none;}
+  .guide-card{order:-1;flex:1 1 100%;margin:0 0 8px;padding:7px 10px;display:flex;align-items:center;gap:8px;}
+  .guide-t{flex-shrink:0;}
+  .guide-d{margin:0;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .detail-panel{position:fixed;left:0;right:0;bottom:0;width:auto;max-height:65vh;z-index:60;border-left:0;border-top:.5px solid var(--border2);
     border-radius:14px 14px 0 0;box-shadow:0 -10px 28px rgba(0,0,0,.35);padding-top:.5rem;}
   .detail-panel.hidden{display:none;}
@@ -340,13 +342,13 @@ body.theme-light .node-box.faded,body.theme-light .node-box.src-off{background:c
 </div>
 <div class="workspace">
   <div class="layer-sidebar">
+    <a class="guide-card" href="wiki.html">
+      <span class="guide-t"><svg class="guide-ico" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.5A2.5 2.5 0 0 1 5.5 3H11v17H5.5A2.5 2.5 0 0 1 3 17.5z"/><path d="M21 5.5A2.5 2.5 0 0 0 18.5 3H13v17h5.5a2.5 2.5 0 0 0 2.5-2.5z"/></svg>Wiki</span>
+      <span class="guide-d">Como usar o grafo</span>
+    </a>
     <h3>Camadas</h3>
     <p style="font-size:10px;color:var(--text3);padding:0 0.75rem 0.4rem;line-height:1.35">Clique numa camada para ver só ela.</p>
     <div id="layer-nav"></div>
-    <a class="guide-card" href="wiki.html">
-      <span class="guide-t">Primeiros passos</span>
-      <span class="guide-d">wiki: o que cada parte do grafo mostra e como usar.</span>
-    </a>
   </div>
 
   <div class="canvas-wrap" id="canvas-wrap">
