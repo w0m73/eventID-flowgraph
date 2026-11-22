@@ -134,6 +134,22 @@ footer{max-width:1180px;margin:18px auto 0;font-size:14px;color:var(--ink2);disp
 footer a{color:var(--ink)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 
+@media (max-width:640px){
+  body{padding:14px 8px 30px;font-size:15.5px}
+  .board{padding:18px 12px;border-width:7px}
+  .tgrid{min-width:0;width:100%;gap:8px}
+  .tgrid .cell{width:auto;height:76px}
+  .tgrid .colhead{display:flex;align-items:center;justify-content:center;font-size:20px}
+  .lanehead{font-family:var(--hand);font-size:18px;color:var(--ink);text-align:center;border-bottom:3px solid var(--blue);padding-bottom:2px}
+  .tgrid .note{padding:6px 7px}
+  .tgrid .note .eid{font-size:17px}
+  .tgrid .note .nm{font-size:11.5px}
+  .tray .note{width:calc(50% - 8px)}
+  .phases{font-size:18px;gap:4px 16px}
+  .instr{font-size:14.5px}
+  .qsheet{padding:18px 14px}
+  .sheet{transform:none}
+}
 @media (max-width:860px){
   .top{grid-template-columns:1fr}
   .board{padding:20px 16px;border-width:8px}
@@ -171,7 +187,7 @@ footer a{color:var(--ink)}
       <span id="ph3">3. Achar o chokepoint</span>
     </div>
 
-    <p class="instr">Toque num cartão e depois no espaço onde ele entra: a coluna é a ordem em que aconteceu, a linha é a máquina que registrou o evento. Nem todo cartão faz parte da história.</p>
+    <p class="instr" id="instr">Toque num cartão e depois no espaço onde ele entra: a coluna é a ordem em que aconteceu, a linha é a máquina que registrou o evento. Nem todo cartão faz parte da história.</p>
 
     <div class="timeline"><div class="grid" id="grid" role="grid"></div></div>
 
@@ -200,7 +216,7 @@ footer a{color:var(--ink)}
 
 <script src="data.js?v=20261122-1020"></script>
 <script>
-const LANES=[{k:'origem',t:'Máquina de origem'},{k:'dc',t:'Controlador de domínio'},{k:'alvo',t:'Máquina alvo'}];
+const LANES=[{k:'origem',t:'Máquina de origem',s:'Origem'},{k:'dc',t:'Controlador de domínio',s:'DC'},{k:'alvo',t:'Máquina alvo',s:'Alvo'}];
 const laneOf=h=>h==='origin'?'origem':(h==='dc'||h==='dclocal')?'dc':'alvo';
 const NOISE_POOL=['4634','4647','4800','4801','7036','4689','4658','4770','4627','5140','4798','4738'];
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -256,25 +272,42 @@ function noteHTML(c,small){
   return `<span class="eid">${c.eid}</span><span class="nm">${esc(ev.short)}</span>${small?'':`<span class="ds">${esc(ev.desc)}</span>`}`;
 }
 
+function cellHTML(l,c){
+  const key=l.k+':'+c; const card=placed[key];
+  const label=`Posição ${c+1}, ${l.t}`+(card?`: evento ${card.eid}`:': vazio');
+  let h=`<div class="cell${selected&&!card&&!checked?' armed':''}" data-key="${key}" role="gridcell">`;
+  if(card) h+=`<button class="note" style="--r:${card.r}" aria-label="${label}. Toque para devolver ao monte." onclick="unplace('${key}')" ${checked?'disabled':''}>${noteHTML(card,true)}</button>`;
+  else h+=`<button class="sr-btn" style="position:absolute;inset:0;background:none;border:0" aria-label="${label}" onclick="place('${key}')" ${checked?'disabled':''}></button>`;
+  return h+`</div>`;
+}
 function render(){
   const cols=current.steps.length;
   const g=document.getElementById('grid');
-  const narrow=matchMedia('(max-width:860px)').matches;
-  g.style.gridTemplateColumns=`${narrow?96:150}px repeat(${cols},${narrow?112:132}px)`;
-  let h='<div></div>';
-  for(let c=0;c<cols;c++) h+=`<div class="colhead" aria-hidden="true">${c+1}</div>`;
-  LANES.forEach(l=>{
-    h+=`<div class="lane">${l.t}</div>`;
+  const narrow=matchMedia('(max-width:640px)').matches;
+  let h='';
+  if(narrow){
+    // celular: cada linha é um passo, cada coluna uma máquina
+    g.classList.add('tgrid');
+    g.style.gridTemplateColumns='28px repeat(3,minmax(0,1fr))';
+    h='<div></div>'+LANES.map(l=>`<div class="lanehead">${l.s}</div>`).join('');
     for(let c=0;c<cols;c++){
-      const key=l.k+':'+c; const card=placed[key];
-      const label=`Posição ${c+1}, ${l.t}`+(card?`: evento ${card.eid}`:': vazio');
-      h+=`<div class="cell${selected&&!card&&!checked?' armed':''}" data-key="${key}" role="gridcell">`;
-      if(card) h+=`<button class="note" style="--r:${card.r}" aria-label="${label}. Toque para devolver ao monte." onclick="unplace('${key}')" ${checked?'disabled':''}>${noteHTML(card,true)}</button>`;
-      else h+=`<button class="sr-btn" style="position:absolute;inset:0;background:none;border:0" aria-label="${label}" onclick="place('${key}')" ${checked?'disabled':''}></button>`;
-      h+=`</div>`;
+      h+=`<div class="colhead" aria-hidden="true">${c+1}</div>`;
+      LANES.forEach(l=>{ h+=cellHTML(l,c); });
     }
-  });
+  } else {
+    g.classList.remove('tgrid');
+    g.style.gridTemplateColumns=`150px repeat(${cols},132px)`;
+    h='<div></div>';
+    for(let c=0;c<cols;c++) h+=`<div class="colhead" aria-hidden="true">${c+1}</div>`;
+    LANES.forEach(l=>{
+      h+=`<div class="lane">${l.t}</div>`;
+      for(let c=0;c<cols;c++) h+=cellHTML(l,c);
+    });
+  }
   g.innerHTML=h;
+  document.getElementById('instr').textContent = narrow
+    ? 'Toque num cartão e depois no espaço onde ele entra: a linha é a ordem em que aconteceu, a coluna é a máquina que registrou o evento. Nem todo cartão faz parte da história.'
+    : 'Toque num cartão e depois no espaço onde ele entra: a coluna é a ordem em que aconteceu, a linha é a máquina que registrou o evento. Nem todo cartão faz parte da história.';
   const inGrid=new Set(Object.values(placed).map(c=>c.uid));
   const t=document.getElementById('tray');
   const left=cards.filter(c=>!inGrid.has(c.uid));
@@ -406,6 +439,7 @@ function showDebrief(){
   const o=document.querySelector(`#pick option[value="${current.id}"]`); if(o&&!o.textContent.includes('resolvido')) o.textContent+=' (resolvido)';
 }
 
+matchMedia('(max-width:640px)').addEventListener('change',()=>{ if(current&&!checked) render(); });
 window.addEventListener('hashchange',()=>{const m=location.hash.match(/^#cenario=([\w-]+)/);if(m&&(!current||m[1]!==current.id)&&SCENARIOS.some(s=>s.id===m[1]))load(m[1]);});
 init();
 </script>
