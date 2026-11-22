@@ -152,7 +152,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 /* MITRE FILTER */
 .mitre-wrap{position:relative;}
-.mitre-select{padding:6px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);font-size:12px;background:var(--bg2);color:var(--text);outline:none;cursor:pointer;max-width:190px;}
+.mitre-select{padding:6px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);font-size:12px;background:var(--bg2);color:var(--text);outline:none;cursor:pointer;max-width:170px;}
 .mitre-select:focus{border-color:var(--blue);}
 .mitre-select.has-filter{border-color:var(--blue);background:var(--blue-bg);color:var(--blue);}
 
@@ -197,6 +197,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .code-mean{color:var(--text);}
 .code-note{font-size:10px;color:var(--text3);line-height:1.35;margin-top:2px;}
 .timing-via{font-size:10px;font-family:'Courier New',monospace;color:var(--text2);}
+.via-key{display:block;font-size:10px;color:var(--text3);font-family:'Courier New',monospace;margin-top:2px;line-height:1.3;}
+.src-tag{font-size:10px;padding:2px 8px;border-radius:20px;display:inline-block;background:var(--bg3);color:var(--text);border:0.5px solid var(--border2);margin-right:6px;}
+.node-src{position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);font-size:8px;font-weight:600;padding:0 4px;border-radius:6px;background:var(--bg);color:var(--text2);border:0.5px solid var(--border2);pointer-events:none;white-space:nowrap;}
+.node-box.src-off{opacity:0.12;pointer-events:none;}
 /* ROSETTA MODAL */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:100;display:flex;align-items:center;justify-content:center;padding:1rem;}
 .modal-bg.hidden{display:none;}
@@ -224,7 +228,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <button class="btn" id="btn-zoom-out" onclick="zoom(-0.15)">－ Zoom</button>
     <button class="btn" onclick="resetZoom()">Reset</button>
     <button class="btn" id="btn-highlight" onclick="toggleHighlightMode()">Modo: Selecionar</button>
-    <button class="btn" onclick="openRosetta()" title="Mesmo motivo de falha em NTLM e Kerberos">⇄ Códigos NTLM × Kerberos</button>
+    <button class="btn" onclick="openRosetta()" title="Mesmo motivo de falha em NTLM e Kerberos">⇄ NTLM × Kerberos</button>
+    <select class="mitre-select" id="src-filter" onchange="applySrcFilter(this.value)" title="Filtrar por onde o evento é gerado">
+      <option value="">Onde é gerado</option>
+      <option value="dc">Só no DC</option>
+      <option value="dclocal">DC ou host (conta local)</option>
+      <option value="target">Host de destino</option>
+      <option value="origin">Host de origem</option>
+      <option value="host">Host onde ocorreu</option>
+      <option value="ca">Servidor CA</option>
+      <option value="nps">Servidor NPS</option>
+    </select>
     <div class="mitre-wrap">
       <select class="mitre-select" id="mitre-filter" onchange="applyMitreFilter(this.value)" title="Filtrar por técnica MITRE ATT&CK">
         <option value="">MITRE ATT&amp;CK...</option>
@@ -267,7 +281,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <div class="detail-eid" id="d-eid"></div>
     <div class="detail-desc" id="d-desc"></div>
     <div id="d-crit"></div>
+    <div class="detail-section">Onde é gerado</div><div class="detail-val" id="d-src"></div>
     <div class="detail-section">Log</div><div class="detail-val" id="d-log"></div>
+    <div class="detail-section">Pré-requisito de auditoria</div><div class="detail-val" id="d-audit"></div>
     <div class="detail-section">ID Legado</div><div class="detail-val" id="d-legacy"></div>
     <div class="detail-section">MITRE ATT&CK</div><div class="detail-val" id="d-mitre"></div>
     <div class="detail-section" id="d-codes-lbl" style="display:none">Códigos e campos-chave</div>
@@ -329,7 +345,7 @@ const LAYERS = [
       {id:"4625", short:"Logon Failed",  desc:"Uma conta falhou ao fazer logon",                               crit:"Low",   log:"Security",legacy:"529-537,539",mitre:"T1110 – Brute Force",   succs:["4740","4625","4624"]},
       {id:"4740", short:"Locked Out",    desc:"Uma conta de usuário foi bloqueada",                            crit:"Medium",log:"Security",legacy:"539",        mitre:"T1110 – Brute Force",   succs:["4767","4625"]},
       {id:"4767", short:"Unlocked",      desc:"Uma conta de usuário foi desbloqueada",                        crit:"Low",   log:"Security",legacy:"N/A",         mitre:"",                      succs:["4624"]},
-      {id:"4624", short:"Logon OK",      desc:"Uma conta fez logon com sucesso",                              crit:"Low",   log:"Security",legacy:"528,540",     mitre:"T1078 – Valid Accounts", succs:["4672","4634","4648","4688","4778"]},
+      {id:"4624", short:"Logon OK",      desc:"Uma conta fez logon com sucesso",                              crit:"Low",   log:"Security",legacy:"528,540",     mitre:"T1078 – Valid Accounts", succs:["4672","4634","4648","4688","4778","5140"]},
       {id:"4634", short:"Logoff",        desc:"Uma conta fez logoff",                                         crit:"Low",   log:"Security",legacy:"538",         mitre:"",                      succs:["4647"]},
       {id:"4647", short:"User Logoff",   desc:"Logoff iniciado pelo usuário",                                 crit:"Low",   log:"Security",legacy:"551",         mitre:"",                      succs:["4634"]},
       {id:"4648", short:"Explicit Cred", desc:"Tentativa de logon com credenciais explícitas",                crit:"Low",   log:"Security",legacy:"552",         mitre:"T1134 – Token Manip.",  succs:["4624","4672"]},
@@ -418,7 +434,7 @@ const LAYERS = [
     id:"l5", name:"Processos & Serviços", color:"#533489",
     desc:"Criação de processos, serviços e tarefas agendadas",
     events:[
-      {id:"4688", short:"Proc Created",  desc:"Um novo processo foi criado",                               crit:"Low",  log:"Security",legacy:"592",          mitre:"T1059 – Scripting",     succs:["4689","4656","4663","4697","4698"]},
+      {id:"4688", short:"Proc Created",  desc:"Um novo processo foi criado",                               crit:"Low",  log:"Security",legacy:"592",          mitre:"T1059 – Scripting",     succs:["4689","4656","4663","4697","4698","4104"]},
       {id:"4689", short:"Proc Exited",   desc:"Um processo foi encerrado",                                 crit:"Low",  log:"Security",legacy:"593",          mitre:"",                      succs:[]},
       {id:"4690", short:"Handle Dup",    desc:"Tentativa de duplicar um handle para um objeto",            crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
       {id:"4696", short:"Token Assigned",desc:"Um token primário foi atribuído ao processo",               crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:["4688"]},
@@ -434,6 +450,8 @@ const LAYERS = [
       {id:"4700", short:"Task Enabled",  desc:"Uma tarefa agendada foi habilitada",                        crit:"Low",  log:"Security",legacy:"N/A",          mitre:"T1053 – Sched. Task",   succs:["4688"]},
       {id:"4701", short:"Task Disabled", desc:"Uma tarefa agendada foi desabilitada",                      crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
       {id:"4702", short:"Task Updated",  desc:"Uma tarefa agendada foi atualizada",                        crit:"Low",  log:"Security",legacy:"N/A",          mitre:"T1053 – Sched. Task",   succs:["4688"]},
+      {id:"4103", short:"PS Module",     desc:"PowerShell executou um pipeline (Module Logging): comandos e parâmetros",crit:"Low", log:"PowerShell/Operational",legacy:"N/A", mitre:"T1059 – Scripting",     succs:[]},
+      {id:"4104", short:"PS ScriptBlock",desc:"PowerShell registrou o bloco de script executado (conteúdo já desofuscado)",crit:"Medium",log:"PowerShell/Operational",legacy:"N/A", mitre:"T1059 – Scripting",     succs:[]},
       {id:"903",  short:"App Install",   desc:"Nova instalação de aplicativo detectada",                   crit:"Low",  log:"Application",legacy:"N/A",       mitre:"T1072 – SW Deploy",     succs:["904"]},
       {id:"904",  short:"App Install+",  desc:"Instalação de aplicativo concluída",                       crit:"Low",  log:"Application",legacy:"N/A",       mitre:"",                      succs:[]},
       {id:"1022", short:"MSI Installed", desc:"Novo arquivo MSI instalado",                               crit:"Low",  log:"Application",legacy:"N/A",       mitre:"",                      succs:[]},
@@ -454,6 +472,8 @@ const LAYERS = [
       {id:"4662", short:"AD Op Perf",    desc:"Uma operação foi realizada em um objeto AD",               crit:"Low",  log:"Security",legacy:"566",          mitre:"T1530 – Data Local",    succs:["4932","4933"]},
       {id:"4663", short:"Obj Access",    desc:"Tentativa de acessar um objeto",                           crit:"Low",  log:"Security",legacy:"567",          mitre:"T1222 – File Perms",    succs:["4670"]},
       {id:"4664", short:"Hard Link",     desc:"Tentativa de criar um hard link",                          crit:"Low",  log:"Security",legacy:"N/A",          mitre:"",                      succs:[]},
+      {id:"5140", short:"Share Access",  desc:"Um compartilhamento de rede foi acessado",                  crit:"Low",  log:"Security",legacy:"N/A",          mitre:"T1021 – Remote Services",succs:["5145"]},
+      {id:"5145", short:"Share Obj Chk", desc:"Acesso a arquivo dentro de compartilhamento verificado (detalhado)",crit:"Low",log:"Security",legacy:"N/A",     mitre:"T1021 – Remote Services",succs:["7045","4688"]},
       {id:"4670", short:"Perms Changed", desc:"Permissões em um objeto foram alteradas",                  crit:"Low",  log:"Security",legacy:"N/A",          mitre:"T1078 – Valid Accounts", succs:[]},
       {id:"4673", short:"Priv Svc Call", desc:"Um serviço privilegiado foi chamado",                     crit:"Low",  log:"Security",legacy:"577",          mitre:"",                      succs:[]},
       {id:"4674", short:"Priv Op",       desc:"Operação tentada em um objeto privilegiado",               crit:"Low",  log:"Security",legacy:"578",          mitre:"",                      succs:[]},
@@ -510,7 +530,7 @@ const LAYERS = [
       {id:"4934", short:"AD Attr Repl",  desc:"Atributos de um objeto AD foram replicados",              crit:"Low",  log:"Security",legacy:"N/A",            mitre:"",                      succs:[]},
       {id:"4935", short:"Repl Fail Bgn", desc:"Início de falha de replicação",                           crit:"Low",  log:"Security",legacy:"N/A",            mitre:"",                      succs:["4936"]},
       {id:"4936", short:"Repl Fail End", desc:"Fim de falha de replicação",                              crit:"Low",  log:"Security",legacy:"N/A",            mitre:"",                      succs:[]},
-      {id:"5827", short:"Netlogon Deny", desc:"Netlogon negou conexão vulnerável de conta de máquina",   crit:"Medium",log:"Security",legacy:"N/A",          mitre:"T1210 – Remote Exploit", succs:[]},
+      {id:"5827", short:"Netlogon Deny", desc:"Netlogon negou conexão vulnerável de conta de máquina",   crit:"Medium",log:"System",  legacy:"N/A",       mitre:"T1210 – Remote Exploit", succs:[]},
       {id:"4868", short:"Cert Denied",   desc:"Gerenciador de certificados negou solicitação pendente",  crit:"Medium",log:"Security",legacy:"772",           mitre:"",                      succs:[]},
       {id:"4870", short:"Cert Revoked",  desc:"Certificate Services revogou um certificado",            crit:"Medium",log:"Security",legacy:"774",            mitre:"",                      succs:[]},
       {id:"4882", short:"CS Perms Chg",  desc:"Permissões de segurança dos Certificate Services foram alteradas",crit:"Medium",log:"Security",legacy:"786",   mitre:"",                      succs:[]},
@@ -624,6 +644,106 @@ const ROSETTA = [
   {why:'Relógio fora de sincronia',ntlm:'0xC0000133', ntlmEv:'4625', ntlm2:'',           krb:'0x25', krbEv:'4771'},
 ];
 
+
+// ══════════════════════════════════════════════════════════════════
+// ONDE O EVENTO É GERADO
+// ══════════════════════════════════════════════════════════════════
+const SRC_LABEL = {
+  dc:     {tag:'DC',        txt:'Controlador de domínio'},
+  dclocal:{tag:'DC / host', txt:'DC para contas de domínio; o próprio host para contas locais'},
+  target: {tag:'Destino',   txt:'Host acessado (destino do logon/ação)'},
+  origin: {tag:'Origem',    txt:'Host de onde a credencial foi usada (origem)'},
+  host:   {tag:'Host',      txt:'Host onde a ação ocorreu'},
+  ca:     {tag:'CA',        txt:'Servidor da autoridade certificadora (AD CS)'},
+  nps:    {tag:'NPS',       txt:'Servidor NPS/RADIUS'},
+};
+const SRC = {};
+const setSrc=(k,ids)=>ids.forEach(i=>SRC[i]=k);
+setSrc('dc',['4768','4769','4770','4771','4772','4773','4820','4821','4822','4823','4824','4727','4728','4729','4730','4737','4754','4755','4756','4757','4758','4764','4765','4766','4780','4741','4742','4743','4739','4713','4706','4716','4794','4865','4866','4867','4662','4928','4932','4933','4934','4935','4936','5827','4675']);
+setSrc('dclocal',['4776','4777','4740','4767','4720','4722','4723','4724','4725','4726','4738','4781','4782','4793','4797']);
+setSrc('target',['4624','4625','4634','4647','4672','4964','4778','4779','4825','4626','4627','5140','5145']);
+setSrc('origin',['4648']);
+setSrc('ca',['4868','4870','4882','4885','4890','4892','4896','4897','5124']);
+setSrc('nps',['6273','6279']);
+// demais: host onde ocorreu
+
+// ══════════════════════════════════════════════════════════════════
+// PRÉ-REQUISITO: subcategoria da Advanced Audit Policy (ou equivalente)
+// ══════════════════════════════════════════════════════════════════
+const AUDIT = {};
+const setAud=(t,ids)=>ids.forEach(i=>AUDIT[i]=t);
+const ALWAYS='Sempre registrado (não depende da política de auditoria)';
+setAud(ALWAYS+' — log System/Application do próprio componente',['41','12','13','6005','6006','6008','6009','6013','1074','7045','7000','7036','7009','7023','7024','903','904','1022','1033','19','1030','1058','1704','104','5827']);
+setAud(ALWAYS+' — serviço de log de eventos',['1100','1101','1102','1104','1105','1108']);
+setAud('System › Security State Change',['4608','4609','4621']);
+setAud('System › Security System Extension',['4610','4611','4614','4622','4697']);
+setAud('System › System Integrity',['4618','4816']);
+setAud('System › IPsec Driver',['4960','4961','4963']);
+setAud('System › Other System Events',['5027','5030','5035']);
+setAud('Logon/Logoff › Logon',['4624','4625','4648']);
+setAud('Logon/Logoff › Logoff',['4634','4647']);
+setAud('Logon/Logoff › Special Logon',['4672','4964']);
+setAud('Logon/Logoff › Other Logon/Logoff Events',['4649','4778','4779','4800','4801','4802','4803']);
+setAud('Logon/Logoff › User / Device Claims',['4626']);
+setAud('Logon/Logoff › Group Membership',['4627']);
+setAud('Logon/Logoff › Network Policy Server',['6273','6279']);
+setAud('Account Logon › Kerberos Authentication Service',['4768','4771','4772']);
+setAud('Account Logon › Kerberos Service Ticket Operations',['4769','4770','4773']);
+setAud('Account Logon › Credential Validation',['4774','4775','4776','4777']);
+setAud('Account Management › User Account Management',['4720','4722','4723','4724','4725','4726','4738','4740','4765','4766','4767','4780','4781','4794','4797','4798']);
+setAud('Account Management › Security Group Management',['4727','4728','4729','4730','4731','4732','4733','4734','4735','4737','4754','4755','4756','4757','4758','4764','4799']);
+setAud('Account Management › Computer Account Management',['4741','4742','4743']);
+setAud('Account Management › Other Account Management Events',['4782','4793']);
+setAud('Detailed Tracking › Process Creation (linha de comando exige a GPO "Include command line in process creation events")',['4688','4696']);
+setAud('Detailed Tracking › Process Termination',['4689']);
+setAud('Detailed Tracking › DPAPI Activity',['4692','4693']);
+setAud('Object Access › Handle Manipulation',['4690']);
+setAud('Object Access › Other Object Access Events',['4698','4699','4700','4701','4702']);
+setAud('Object Access › File System ou Registry (conforme o objeto) + SACL no objeto',['4656','4658','4660','4663']);
+setAud('Object Access › File System + SACL no objeto',['4659','4664']);
+setAud('Object Access › Registry + SACL na chave',['4657']);
+setAud('Object Access › SAM',['4661']);
+setAud('Object Access › File Share',['5140']);
+setAud('Object Access › Detailed File Share (volume muito alto: habilite com critério)',['5145']);
+setAud('Object Access › Certification Services',['4868','4870','4882','4885','4890','4892','4896','4897','5124']);
+setAud('DS Access › Directory Service Access + SACL no objeto do AD',['4662']);
+setAud('DS Access › Directory Service Replication',['4932','4933']);
+setAud('DS Access › Detailed Directory Service Replication',['4928','4934','4935','4936']);
+setAud('Privilege Use › Sensitive / Non Sensitive Privilege Use',['4673','4674']);
+setAud('Policy Change › Audit Policy Change',['4715','4719','4817','4906','4907','4908','4912']);
+setAud('Policy Change › Authentication Policy Change',['4706','4713','4716','4739','4865','4866','4867']);
+setAud('Policy Change › Authorization Policy Change',['4670','4703','4704','4705']);
+setAud('Policy Change › MPSSVC Rule-Level Policy Change',['4946','4947','4948','4949','4954','4956']);
+setAud('Policy Change › Other Policy Change Events',['4714','4826']);
+setAud('GPO: Turn on PowerShell Script Block Logging (sem a GPO, o Windows ainda registra blocos considerados suspeitos)',['4104']);
+setAud('GPO: Turn on Module Logging (definir quais módulos)',['4103']);
+
+// ══════════════════════════════════════════════════════════════════
+// CAMPOS DE CORRELAÇÃO — como provar a aresta numa busca
+// ══════════════════════════════════════════════════════════════════
+const LID='TargetLogonId (4624) = SubjectLogonId';
+const KEYS = {
+  '4624-4672':LID, '4624-4688':LID, '4624-4648':LID, '4624-5140':LID+' (Logon Type 3)',
+  '4624-4634':'TargetLogonId = TargetLogonId',
+  '4672-4688':'SubjectLogonId = SubjectLogonId',
+  '4688-4689':'NewProcessId (4688) = ProcessId (4689)',
+  '4688-4656':'NewProcessId (4688) = ProcessId', '4688-4663':'NewProcessId (4688) = ProcessId',
+  '4688-4697':'SubjectLogonId', '4688-4698':'SubjectLogonId',
+  '4688-4104':'NewProcessId (4688, hexadecimal) = Execution ProcessID (4104, decimal) — converta antes de comparar',
+  '4656-4663':'HandleId + ProcessId', '4663-4658':'HandleId + ProcessId', '4656-4658':'HandleId + ProcessId',
+  '4625-4740':'TargetUserName — no 4740, Caller Computer Name indica a máquina de origem do bloqueio',
+  '4625-4624':'TargetUserName + IpAddress',
+  '4740-4767':'TargetUserName', '4767-4624':'TargetUserName', '4740-4625':'TargetUserName',
+  '4768-4769':'Conta + IpAddress (não existe ID comum entre TGT e TGS)',
+  '4771-4768':'TargetUserName + IpAddress', '4771-4625':'TargetUserName + IpAddress',
+  '4776-4624':'TargetUserName + Workstation (4776) = WorkstationName (4624)',
+  '4776-4625':'TargetUserName + Workstation (4776) = WorkstationName (4625)',
+  '4697-7045':'ServiceName', '4698-4700':'TaskName', '4698-4702':'TaskName', '4700-4702':'TaskName', '4698-4688':'TaskName → processo filho de svchost (Schedule)',
+  '4720-4722':'TargetSid', '4720-4728':'TargetSid (4720) = MemberSid', '4720-4732':'TargetSid (4720) = MemberSid',
+  '5140-5145':'SubjectLogonId + ShareName', '5145-7045':'Host de destino + RelativeTargetName (5145) = ImagePath (7045)',
+  '5145-4688':'RelativeTargetName (5145) ≈ NewProcessName (4688)',
+};
+
 // ══════════════════════════════════════════════════════════════════
 // INDEX
 // ══════════════════════════════════════════════════════════════════
@@ -684,6 +804,14 @@ const SCENARIOS = [
     mitre:'T1003.006',
     steps:['4624','4672','4662','4928','4932','4934','4933'],
     desc:'Logon privilegiado, operação em objeto AD, estabelecimento de contexto de replicação e dump de atributos (credenciais).'
+  },
+  {
+    id:'lateral-psexec',
+    name:'Movimento lateral (PsExec)',
+    color:'#993C1D',
+    mitre:'T1021.002',
+    steps:['4624','5140','5145','7045','4688'],
+    desc:'Logon de rede no alvo, acesso ao ADMIN$, cópia do binário, criação de serviço e execução — tudo no host de destino.'
   },
   {
     id:'persistence-task',
@@ -1044,7 +1172,7 @@ function renderGraph(){
       box.className='node-box';
       box.id='node-'+ev.id;
       box.style.cssText=`background:${col.bg};color:${col.text};`;
-      box.innerHTML=`<span class="node-eid">${ev.id}</span><span class="node-short">${ev.short}</span>`+(CODES[ev.id]?`<span class="node-codes" title="Tem códigos de status">${CODES[ev.id].reduce((a,f)=>a+f.codes.length,0)}</span>`:'');
+      box.innerHTML=`<span class="node-eid">${ev.id}</span><span class="node-short">${ev.short}</span>`+(['dc','ca','nps'].includes(SRC[ev.id])?`<span class="node-src">${SRC_LABEL[SRC[ev.id]].tag}</span>`:'')+(CODES[ev.id]?`<span class="node-codes" title="Tem códigos de status">${CODES[ev.id].reduce((a,f)=>a+f.codes.length,0)}</span>`:'');
       box.onclick=()=>selectNode(ev.id);
       box.title=ev.desc;
 
@@ -1171,6 +1299,11 @@ const TIMING = {
   // CAMADA 5 — Processos & Serviços
   '4672-4688': {label:'1 – 10 s',  cls:'t-seconds',  note:'Após logon privilegiado, processos são iniciados em poucos segundos (shell, explorer, etc.).',           anomaly:'4688 gerando processo de shell (cmd/powershell) < 2s após 4672 de conta de serviço é suspeito.'},
   '4688-4689': {label:'Variável',  cls:'t-variable', note:'Duração do processo — pode ser ms (comando rápido) ou horas (serviço contínuo).',                       anomaly:'Processo com duração < 1s que gera muitos 4663 antes de encerrar indica varredura automatizada.'},
+  '4624-5140': {label:'< 1 s',     cls:'t-instant',  note:'Logon de rede (Type 3) e acesso ao compartilhamento acontecem juntos na sessão SMB.', anomaly:'Acesso a ADMIN$ ou C$ a partir de estação de usuário = forte indicador de movimento lateral.'},
+  '5140-5145': {label:'< 1 s',     cls:'t-instant',  note:'Após abrir o compartilhamento, cada arquivo acessado gera 5145 (se a auditoria detalhada estiver ativa).', anomaly:''},
+  '5145-7045': {label:'< 5 s',     cls:'t-seconds',  note:'Padrão PsExec: binário copiado para ADMIN$ e, em seguida, serviço criado no alvo.', anomaly:'5145 com gravação de .exe em ADMIN$ seguido de 7045 no mesmo host = PsExec ou similar.'},
+  '5145-4688': {label:'Segundos',  cls:'t-seconds',  note:'Arquivo copiado via compartilhamento é executado no alvo.', anomaly:'Executável recém-copiado por SMB sendo iniciado = transferência de ferramenta (T1570).'},
+  '4688-4104': {label:'< 2 s',     cls:'t-instant',  note:'powershell.exe inicia e registra os blocos de script conforme executa.', anomaly:'4688 com -enc/-EncodedCommand: o 4104 mostra o conteúdo já decodificado.'},
   '4697-7045': {label:'< 1 s',     cls:'t-instant',  note:'4697 (Security log) e 7045 (System log) são gerados simultaneamente pelo mesmo evento.',                anomaly:'7045 sem 4697 correspondente indica que a auditoria de segurança pode estar desabilitada.'},
   '7045-7036': {label:'< 5 s',     cls:'t-seconds',  note:'Serviço instalado e iniciado na sequência imediata em instalações automáticas.',                        anomaly:'7045 com nome aleatório (< 8 chars) ou caminho em %TEMP% é forte indicador de PSExec ou similar.'},
   '7036-4688': {label:'< 2 s',     cls:'t-instant',  note:'Processo do serviço é criado imediatamente após o serviço entrar em estado running.',                   anomaly:''},
@@ -1222,6 +1355,9 @@ function showDetail(eid){
   document.getElementById('d-desc').textContent=ev.desc;
   document.getElementById('d-crit').innerHTML=critBadge(ev.crit)+(ev.mitre?`<span class="badge badge-info" style="margin-left:4px">${ev.mitre}</span>`:'');
   document.getElementById('d-log').textContent=ev.log;
+  const sk=SRC[eid]||'host';
+  document.getElementById('d-src').innerHTML=`<span class="src-tag">${SRC_LABEL[sk].tag}</span>${SRC_LABEL[sk].txt}`;
+  document.getElementById('d-audit').textContent=AUDIT[eid]||'Não mapeado — consulte a documentação do evento';
   document.getElementById('d-legacy').textContent=ev.legacy||'N/A';
   document.getElementById('d-mitre').innerHTML=ev.mitre?`<a href="https://attack.mitre.org/techniques/${ev.mitre.match(/T[\d.]+/)?.[0]||''}" target="_blank" style="color:var(--blue)">${ev.mitre}</a>`:'—';
 
@@ -1255,6 +1391,7 @@ function showDetail(eid){
         <span class="timing-badge ${t.cls}">${t.label}</span>
       </div>
       ${t.via?`<div class="timing-via">via ${t.via}</div>`:''}
+      ${KEYS[t.dir==='→'?eid+'-'+t.otherId:t.otherId+'-'+eid]?`<div class="via-key">correlação: ${KEYS[t.dir==='→'?eid+'-'+t.otherId:t.otherId+'-'+eid]}</div>`:''}
       <div class="timing-note">${t.note}</div>
       ${t.anomaly?`<div class="timing-anomaly">⚠ ${t.anomaly}</div>`:''}
     </div>
@@ -1263,12 +1400,12 @@ function showDetail(eid){
   const succLbl=document.getElementById('d-succ-lbl');
   const succList=document.getElementById('d-successors');
   succLbl.style.display=succs.length?'block':'none';
-  succList.innerHTML=succs.map(s=>`<div class="related-item" onclick="selectNode('${s}')"><span class="related-eid">${s}</span> ${evtMap[s].short}</div>`).join('');
+  succList.innerHTML=succs.map(s=>`<div class="related-item" onclick="selectNode('${s}')"><span class="related-eid">${s}</span> ${evtMap[s].short}${KEYS[eid+'-'+s]?`<span class="via-key">por ${KEYS[eid+'-'+s]}</span>`:''}</div>`).join('');
 
   const predLbl=document.getElementById('d-pred-lbl');
   const predList=document.getElementById('d-predecessors');
   predLbl.style.display=preds.length?'block':'none';
-  predList.innerHTML=preds.map(p=>`<div class="related-item" onclick="selectNode('${p}')"><span class="related-eid">${p}</span> ${evtMap[p].short}</div>`).join('');
+  predList.innerHTML=preds.map(p=>`<div class="related-item" onclick="selectNode('${p}')"><span class="related-eid">${p}</span> ${evtMap[p].short}${KEYS[p+'-'+eid]?`<span class="via-key">por ${KEYS[p+'-'+eid]}</span>`:''}</div>`).join('');
 }
 
 
@@ -1318,6 +1455,15 @@ function renderRosetta(){
 function openRosetta(){renderRosetta();document.getElementById('rosetta').classList.remove('hidden');}
 function closeRosetta(){document.getElementById('rosetta').classList.add('hidden');}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeRosetta();});
+
+function applySrcFilter(v){
+  document.getElementById('src-filter').classList.toggle('has-filter',!!v);
+  document.querySelectorAll('.node-box').forEach(box=>{
+    const eid=box.id.replace('node-','');
+    box.classList.toggle('src-off', !!v && (SRC[eid]||'host')!==v);
+  });
+  requestAnimationFrame(drawCrossArrows);
+}
 
 // ══════════════════════════════════════════════════════════════════
 // SEARCH & FILTER
